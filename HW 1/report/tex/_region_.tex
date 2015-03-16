@@ -1,0 +1,548 @@
+\message{ !name(p2.tex)}\documentclass[../main.tex]{subfiles}
+\begin{document}
+
+\message{ !name(p2.tex) !offset(-3) }
+
+\lstset{language=Matlab}
+
+\chapter{Problem 2}
+\label{cha:problem-2}
+
+\section{Introduction}
+\label{sec:introduction}
+In this problem, we will implement a program that calculates stress
+response of a planar sheet of non-linear hyperelastic material
+subjected to a given deformation.  We have been given a compressible
+neo-Hookean hyperelastic model which has strain energy defined as
+\begin{align}
+  \label{eq:w}
+  w(\mathbf{C}) = \frac{\lambda_0}{2}\ln^2(J) - 
+  \mu_0\ln(J)+\frac{\mu_0}{2}(I_1-3)
+\end{align}
+where
+\begin{align*}
+  I_1 = tr(\mathbf{C}) = C_{kk},\quad J =
+  det(\mathbf{F}),\quad \mathbf{C}=\mathbf{F}^T\mathbf{F}.
+\end{align*}
+By definition, first Piola-Kirchhoff stress tensor is given as
+\begin{align*}
+  P_{iJ} &=\frac{\partial
+           w(\mathbf{C})}{\partial F_{iJ}}\\
+         &=
+           \left(\lambda_0\ln(J)-\mu_0\right)\frac{\partial}{\partial
+           F_{iJ}}(\ln(J)) +
+           \frac{\mu_0}{2}\left(\frac{\partial}
+           {\partial F_{iJ}}(F_{lK}F_{lK})\right)\\
+\end{align*}
+Now, we can simplify above equation using following two results
+\begin{align*}
+  \frac{\partial}{\partial F_{iJ}}(\ln(J))&= \frac{1}{J}\frac{det(\mathbf{F})}
+                                            {\partial F_{iJ}}\\
+                                          &=  \frac{1}{J}JF^{-1}_{Ji}\\
+                                          &= F^{-1}_{Ji}\\
+  \frac{\partial}{\partial F_{iJ}}(F_{lK}F_{lK}) &=2F_{lK}\delta_{li}\delta_{KJ}\\
+                                          &= 2F_{iJ}
+\end{align*}
+Thus we get,
+\begin{align}
+  \label{eq:P}
+  \boxed{P_{iJ}=(\lambda_0\ln(J)-\mu_0)F^{-1}_{Ji}+\mu_0F_{iJ}}
+\end{align}
+
+The tangent modulus is a derivative of first Piola-Kirchhoff stress
+tensor with respect to the deformation gradient. Using the last two
+equations we can calculate the derivative as follows
+\begin{align*}
+  C_{iJkL}&=\frac{\partial P_{iJ}}{\partial F_{kL}}\\
+          &= \left(\lambda_0\ln(J) - \mu_0\right)\frac{\partial F^{-1}_{Ji}}{\partial F_{kL}} + \frac{\lambda_0}{J}\left(\frac{\partial det(\mathbf{F})}{\partial F_{kL}}\right)F^{-1}_{Ji} + \mu_0\delta_{ki}\delta_{LJ}\\
+\end{align*}
+We can simplify this equation using the result
+\begin{align*}
+  \frac{\partial F^{-1}_{Ji}}{\partial F_{kL}} = -F^{-1}_{Jk}F^{-1}_{Li}
+\end{align*}
+\begin{align}
+  \label{eq:C}
+  \boxed{C_{iJkL}=\lambda_0F^{-1}_{Ji}F^{-1}_{Lk} + \mu_0\delta_{ik}\delta_{JL}-(\lambda_0\ln(J) - \mu_0)F^{-1}_{Jk}F^{-1}_{Li}}
+\end{align}
+
+Equations \ref{eq:w}, \ref{eq:P} and \ref{eq:C} give 3-D behavior of a
+compressible neo-Hookean material. Next, we will adapt these equations
+for 2-D \textit{plane stress} case. Consider a planar sheet of
+compressible neo-Hookean material lying in the 1-2 plane of the lab
+frame. Thus, the normal to the surface is $\bm{N} = \bm{E}_3$.  A
+planar deformation implies there should not be any shearing in the
+3-direction. But in response to the in-plane stretching we can expect
+a compression in the 3-direction. Thus, our deformation gradient can
+be assumed to look like
+\begin{align*}
+  [F_{iJ}] =
+  \begin{pmatrix}
+    F_{11} & F_{12} & 0\\
+    F_{21} & F_{22} & 0\\
+    0 & 0 & \lambda
+  \end{pmatrix}
+\end{align*}
+In order that there is no stress in the 3-direction, we should set the
+component of traction vector in that direction to be zero in the
+deformed configuration. But because of planar stress we also expect
+the surface normal in deformed and reference configuration to be in
+the same direction i.e. $\bm{n} = \bm{N}$. We also assume that the
+traction vectors are same in the reference and deformed
+configuration. Hence, we can write
+\begin{align}
+  \label{eq:planeStress}
+  T_N = \bm{N}\cdot P\bm{N} = P_{33}(F_{\alpha\beta},\lambda) = 0 \quad \alpha,\beta\in{1,2}
+\end{align}
+In general, $\mathbf{P}$ is a function of components of
+$\mathbf{F}$. Hence, for plane stress we can write
+$P_{33}(F_{\alpha\beta},\lambda))$. We need to solve for $\lambda$
+using the known values of $F_{\alpha\beta}$. This will be discussed in
+next section.
+
+Let us define the strain energy density, first Piola-Kirchhoff stress
+and the tangent modulus for plane-stress condition as follows
+\begin{align*}
+  w^{(2D)}(\mathbf{F}) &\equiv w^{(3D)}(F_{\alpha\beta},\lambda(F_{\alpha\beta}))\\
+  P^{(2D)}_{\alpha\beta}(\mathbf{F})&\equiv \frac{\partial}{\partial F_{\alpha\beta}}(w^{(2d)})\\
+                       &= \frac{\partial w^{(3D)}}{\partial F_{\alpha\beta}} +\cancelto{P_{33}=0}{\frac{\partial w}{\partial \lambda}}\frac{\partial \lambda}{\partial F_{\alpha\beta}}\\
+                       &= \frac{\partial w^{(3D)}}{\partial F_{\alpha\beta}}\\
+  C^{(2D)}_{\alpha\beta\gamma\delta}(\mathbf{F})&\equiv \frac{\partial}{\partial F_{\gamma\delta}}\left(P^{(2D)}_{\alpha\beta}\right)\\
+                       &=\frac{\partial P_{\alpha\beta}}{\partial F_{\gamma\delta}} + \frac{\partial P_{\alpha\beta}}{\partial F_{33}}\frac{\partial\lambda}{\partial F_{\gamma\delta}}
+\end{align*}
+Using plane strain constraint we find that
+\begin{align*}
+  P_{33}(F_{\alpha\beta},\lambda)&=0\\
+  dP_{33} = \frac{\partial P_{33}}{\partial F_{\alpha\beta}}dF_{\alpha\beta} + \frac{\partial P_{33}}{\partial F_{33}}d\lambda &= 0\\
+  \implies \quad C_{33\alpha\beta}dF_{\alpha\beta}+C_{3333}d\lambda &=0\\
+  C_{33\alpha\beta}dF_{\alpha\beta}+C_{3333}\frac{\partial\lambda}{\partial F_{\alpha\beta}}dF_{\alpha\beta} &=0\\
+  \left(C_{33\alpha\beta}+C_{3333}\frac{\partial\lambda}{\partial F_{\alpha\beta}}\right) &=0\\
+  \implies\quad\boxed{\frac{\partial\lambda}{\partial F_{\alpha\beta}} = -\frac{C_{33\alpha\beta}}{C_{3333}}}
+\end{align*}
+Therefore, the 2-D tangent modulus is given as
+\begin{align*}
+  \boxed{C^{(2D)}_{\alpha\beta\gamma\delta} = C_{\alpha\beta\gamma\delta} - C_{\alpha\beta33}C_{33\gamma\delta}\left(C_{3333}\right)^{-1}}
+\end{align*}
+Thus we have obtained all theoretical results required to solve our
+problem. Now, let's look at some numerical aspects of the solution.
+\section{Formulation of Numerical Methods}
+
+\subsection{Neo-Hookean function}
+First of all, we will implement a function that takes as input a valid
+deformation gradient $\mathbf{F}$ and material constants, $\lambda_0$
+and $\mu_0$, as input and returns the strain engergy density $w$,
+first Piola-Kirchhoff stress tensor $\mathbf{P}$ and the tangent
+modulus $C_{iJkL}$ as output using the analytical results derived in
+the introduction. We use multidimensional array to store the fourth
+order tensor, $C_{iJkL}$. We also implemented a small function
+\textit{kronDel()} that takes two indices $i$ and $j$ as input and
+returns $1$ if $i=j$ and $0$ otherwise.
+\begin{lstlisting}[style=Matlab-editor]
+  function [w,P,TM] = neoHookean(F,lambda,mu)
+  % NEOHOOKEAN takes the deformation gradient as an input and returns the
+  % strain energy density w, first Piola-Kirchhoff stress tensor P and
+  % tangent modulus TM as output.User must also specify the values of
+  % material constants 'lambda' and 'mu'
+  
+  J = det(F);
+  Fi = inv(F);
+  C = F'*F;
+  I1 = trace(C);
+  
+  % Calculating strain energy density
+  w = (lambda/2)*(log(J))^2 - mu*(log(J)) + (mu/2)*(I1-3);
+  
+  % Calculating the first Piola-Kirchoff Stress tensor
+  P = (lambda*log(J)- mu)*Fi' + mu*F;
+  
+  % Assming 3-dimensions for a fourth-order tangent modulus
+  TM = zeros(3,3,3,3);
+  
+  % Calculating the TM components
+  for l=1:3
+      for M=1:3
+          for n=1:3
+              for O=1:3
+                  TM(l,M,n,O) = lambda*Fi(M,l)*Fi(O,n) + mu*...
+                             kronDel(l,n)*kronDel(M,O) - (lambda*log(J)...
+                             - mu)*Fi(M,n)*Fi(O,l);
+              end
+          end
+      end
+  end
+  end
+\end{lstlisting}
+
+\subsection{Generating valid arbitrary deformation gradient}
+We generate a random matrix $\mathbf{H}$ of size $3\times 3$. A valid
+deformation gradient should have $J = det(\mathbf{F}) > 0$. We can
+ensure this if $\mathbf{F}$ is a positive definite matrix. Hence, we
+construct the deformation gradient as $\mathbf{F} = \mathbf{HH}^T$
+ \begin{lstlisting}[style=Matlab-editor]
+   F = rand(3);
+   % We will ensure that F is positive definite so that det(F)>0
+   F = F*F';
+   if(det(F)<0)
+         error('Invalid deformation gradient generated!');
+   end
+ \end{lstlisting}
+
+\subsection{Consistency test}
+\label{sec:consistency}
+As we saw in the introduction, $\mathbf{P}$ is derivative of $w$ with
+respect to $\mathbf{F}$ and $C_{iJkL}$ is derivative of $P_{iJ}$ with
+respect to $F_{kL}$ for any valid deformation. We also derived the
+analytical expressions for $P_{iJ}$ and $C_{iJkL}$. We can validate
+our code, by testing if numerical differentiation of $w$ and
+$\mathbf{P}$ tallies with the analytical equations for $\mathbf{P}$
+and $C_{iJkL}$ respectively. This is called consistency test.  We will
+use 3-point finite difference scheme for numerical differentiation. As
+per this scheme, if $h$ is small perturbation in the value $x$, the
+derivative of function $f(x)$ is given as
+\begin{align*}
+  f'(x) \approx \frac{f(x+h)-f(x-h)}{2h} = f'_h(x)
+\end{align*}
+This method has error $\mathcal{O}(h^2)$.
+\begin{align*}
+  error = |f'_h(x) - f'(x)| &= Kh^2\\
+  \log(error) &= \log(K) + 2\log(h)\\
+\end{align*}
+where $K$ is some constant. So on a log-log plot of $error$ vs $h$
+should give us a straight line of slope $2$.  For our problem, the
+numerical derivatives are given as follows:
+\begin{align*}
+  P^{(h)}_{iJ}(F_{iJ}) &= \frac{w(F_{iJ}+h) - w(F_{iJ}-h)}{2h}\\
+  C^{(h)}_{iJkL}(F_{kL})&=\frac{P_{iJ}(F_{kL}+h) - P_{iJ}(F_{kL}-h)}{2h}\\
+\end{align*}
+
+The implementation looks as follows:
+\begin{lstlisting}[style=Matlab-editor]
+lambda = rand(1)*10;
+mu = rand(1)*10;
+%Calculate the analytical P and TM
+[w_exact,P_exact,TM_exact] = neoHookean(F,lambda,mu);
+
+%% Calculate P and TM using 3-point finite difference scheme
+h = norm(F)*logspace(-6,-3);
+
+errP = zeros(1,length(h));
+errTM = zeros(1,length(h));
+
+for z=1:length(h)
+    P_approx = zeros(3,3);
+    for i=1:3
+        for j=1:3
+            F(i,j) = F(i,j) + h(z);
+            [Wplus,~,~] = neoHookean(F,lambda,mu);
+            F(i,j) = F(i,j)-2*h(z);
+            [Wminus,~,~] = neoHookean(F,lambda,mu);
+            P_approx(i,j) = (Wplus - Wminus)/(2*h(z));
+            F(i,j) = F(i,j) + h(z); %Reset F
+        end
+    end
+    errP(z)= max(max(abs(P_exact-P_approx)))/norm(P_exact);
+    
+    % Caculate TM using 3-point finite difference scheme
+    TM_approx = zeros(3,3,3,3);
+    index = 1;
+    for i=1:3
+        for J=1:3
+            for k=1:3
+                for L=1:3
+                    F(k,L) = F(k,L) + h(z);
+                    [~,Pplus,~] = neoHookean(F,lambda,mu);
+                    F(k,L) = F(k,L) - 2*h(z);
+                    [~,Pminus,~] = neoHookean(F,lambda,mu);
+                    TM_approx(i,J,k,L) = (Pplus(i,J)-Pminus(i,J))/(2*h(z));
+                    F(k,L) = F(k,L) + h(z); %Reset F
+                end
+            end
+        end
+    end
+    errTM(z) = max(max(max(max((TM_exact - TM_approx)))))/...
+        max(max(max(max(TM_exact))));
+end
+
+%% Log-log plot of error vs h
+loglog(h,errP,'r',h,errTM,'g');
+xlabel('log(h)');
+ylabel('log(error)')
+legend('Log of error in P','Log of error in TM');
+
+slope1 = (log(errP(length(h)-5))-log(errP(5)))/(log(h(length(h)-5))-...
+    log(h(5)));
+fprintf('Slope of log(errP) vs log(h) = %4.3e\n',slope1);
+slope2 = (log(errTM(length(h)-5))-log(errTM(5)))/(log(h(length(h)-5))-...
+    log(h(5)));
+fprintf('Slope of log(errTM) vs log(h) = %4.3e\n',slope2);
+\end{lstlisting}
+
+Similarly, we implemented consistency check for plane-stress
+neoHookean function.
+
+\subsection{Generating a random rotation matrix}
+We used Rodrigues equation to otbain rotation matrix $\mathbf{Q}$ for
+rotation around a randomly generated axis $\mathbf{v}$ by a random
+angle $\theta$. We check that the rotation matrix actually belongs to
+$SO^3$ by checking if $det(\mathbf{Q}) = 1$ and
+$\mathbf{Q}^{-1} =\mathbf{Q}^T $
+
+\begin{lstlisting}[style = Matlab-editor]
+v = rand(3,1);
+n = v/norm(v);
+theta = rand(1)*pi;
+n_hat = [0,-n(3),n(2); n(3),0,-n(1);-n(2),n(1),0];
+Q = eye(3) + sin(theta)*n_hat + (1- cos(theta))*(n*n' - eye(3));
+tol = 10^-7;
+
+% Check if Q belongs to SO3
+if (abs(det(Q)-1) > tol || norm(abs(inv(Q) - Q')) > tol)
+    error('Q does not belong to SO3.\n');
+end
+\end{lstlisting}
+
+\subsection{Material Frame Indifference test}
+\label{sec:mfi}
+A valid constitutive material model must satisfy material frame
+indifference, that is, the stress response should be independent of
+the coordinate representation used in calculation. One way to check
+this is to compare $w$, $\mathbf{P}$ and $C_{iJkL}$ obtained for a
+deformation gradient $\mathbf{F}$ with the same quantities calculated
+for $\mathbf{F}$ in a rigidly rotated co-ordinate
+system. Theoretically, the two set of quantities should compare as
+follows.
+\begin{align*}
+  w(\mathbf{QF}) &= w(\mathbf{F})\\
+  \mathbf{P}(\mathbf{QF}) &= \mathbf{Q}\mathbf{P}(\mathbf{F})\\
+  C_{iJkL}(\mathbf{QF}) &= Q_{im}Q_{kn}C_{mJnL}(\mathbf{F})
+\end{align*}
+The snippet that validates this is as follows
+\begin{lstlisting}[style=Matlab-editor]
+%% Checking Material Frame Indifference
+F_rot = Q*F;
+[w_rot,P_rot,TM_rot] = neoHookean(F_rot,lambda,mu);
+
+fprintf('Relative change in w due to rotation = %4.3e\n',...
+    abs(w_rot - w_exact)/norm(w_exact));
+fprintf('Relative change in P due to rotation = %4.3e\n',...
+    max(max((abs(P_rot - Q*P_exact))))/norm(P_exact));
+TM_rot_exact = zeros(3,3,3,3);
+for i=1:3
+    for J=1:3
+        for k=1:3
+            for L=1:3
+                for m=1:3
+                    for n=1:3
+                        TM_rot_exact(i,J,k,L) = ...
+                            TM_rot_exact(i,J,k,L) + Q(i,m)*Q(k,n)*...
+                            TM_exact(m,J,n,L);
+                    end
+                end
+            end
+        end
+    end
+end
+fprintf('Relative change in TM due to rotation = %4.3e\n',...
+    max(max(max(max(abs(TM_rot - TM_rot_exact)))))/...
+    max(max(max(max(TM_exact)))));
+\end{lstlisting}
+
+\subsection{Isotropy test}
+\label{sec:isotropy}
+Compressible neo-Hookean model is designed to be isotropic. The
+stress-response of the material should not change arbitrarily by just
+a rigid rotation of the deformation. Rather, a rotated deformation
+should yield quantities that are related to their counterparts for
+original deformation as follows
+\begin{align*}
+  w(\mathbf{FQ}) &= w(\mathbf{F})\\
+  \mathbf{P}(\mathbf{FQ}) &= \mathbf{P}(\mathbf{F})\mathbf{Q}\\
+  C_{iJkL}(\mathbf{QF}) &= Q_{MJ}Q_{NL}C_{iMkN}(\mathbf{F})
+\end{align*}
+Following code validates this requirement
+\begin{lstlisting}[style=Matlab-editor]
+%% Symmetry test
+F_sym = F*Q;
+
+[w_sym,P_sym,TM_sym] = neoHookean(F_sym,lambda,mu);
+
+fprintf('Relative change in w for symmetry test = %4.3e\n',...
+    abs(w_sym - w_exact)/norm(w_exact));
+fprintf('Relative change in P for symmetry test = %4.3e\n',...
+    max(max((abs(P_sym - P_exact*Q))))/norm(P_exact));
+
+TM_sym_exact = zeros(3,3,3,3);
+for i=1:3
+    for J=1:3
+        for k=1:3
+            for L=1:3
+                for M=1:3
+                    for N=1:3
+                        TM_sym_exact(i,J,k,L) = ...
+                            TM_sym_exact(i,J,k,L) + Q(M,J)*Q(N,L)*...
+                            TM_exact(i,M,k,N);
+                    end
+                end
+            end
+        end
+    end
+end
+
+fprintf('Relative change in TM for symmetry test = %4.3e\n',...
+    max(max(max(max(abs(TM_sym - TM_sym_exact)))))/...
+    max(max(max(max(TM_exact)))));
+\end{lstlisting}
+
+\subsection{Newton-Raphson method}
+\label{sec:NR}
+Equation \ref{eq:planeStress} is non-linear and we need to solve for
+$\lambda$ in terms of $F_{\alpha\beta}$. This can be done using
+\textit{Newton-Raphson} iterative method. Since $F_{\alpha\beta}$ are
+known we can consider $P_{33}(F_{\alpha\beta},\lambda) =
+P_{33}(\lambda)$ Suppose, $\lambda_{n+1}$ is a root of the non-linear
+equation \ref{eq:planeStress} and $\lambda_{n}$ is our guess for the
+root such that $\lambda_{n+1}=\lambda_{n}+\Delta\lambda$ where
+$\Delta\lambda$ is small. Using Taylor expansion we can write
+\begin{align*}
+  0 = P_{33}(\lambda_n+\Delta\lambda) &=P_{33}(\lambda_n) + \Delta\lambda\cancelto{C_{3333}}{\frac{dP_{33}}{d\lambda}} + \ldots\\
+  \implies \quad \Delta\lambda &\approx -P_{33}(\lambda_n)\left(C_{3333}(\lambda_n)\right)^{-1}
+\end{align*}
+Therefore, our Newton-Raphson iteration scheme is 
+\begin{align}
+  \boxed{\lambda_{n+1} = \lambda_n- P_{33}(\lambda_n)\left(C_{3333}(\lambda_n)\right)^{-1}}
+\end{align}
+There can be situations when the Newton-Raphson method does not
+converge. For example, if the error in initial guess is large then
+subsequent iterations will take the scheme away from actual
+root. Also, after certain number of iterations, the adjustment
+$\Delta\lambda$ may become very small and there is no tangible
+improvement in accuracy of the solution inspite of further
+iterations. Hence, we need to terminate the scheme the number of
+iteration crosses a reasonable threshold limit even if the error is
+not below our chosen tolerance limit. If our initial guess is close to
+the solution, the scheme converges quadratically. Hence, we don't need
+very large number of iterations. For our implementation we have
+following termination criteria:
+\begin{enumerate}
+\item $|P_{33}(\lambda_n)| < 10^{-8}$
+\item Number of iterations $>$ 100
+\item $\Delta\lambda < 10^3\times machine\quad precision$
+\end{enumerate}
+
+The snippet looks like this
+\begin{lstlisting}[style=Matlab-editor]
+%Initial guess for F33 i.e. gamma and initialize P
+gamma = 1;
+tol = 10^-8;
+iterLimit =100;
+iterCount = 1;
+%Newton iteration to solve for F33 such that P33 = 0
+while(1)
+    F = [D(1,1),D(1,2),0; D(2,1),D(2,2),0; 0,0,gamma];
+    [~,P,TM] = neoHookean(F,lambda,mu);
+    dgamma = -(P(3,3))/(TM(3,3,3,3));
+    gamma = gamma + dgamma;
+    iterCount = iterCount + 1;
+    if(~isreal(P))
+        error('P has become imaginary. Calculation terminated.');
+    end
+    if(abs(P(3,3)) < tol || iterCount>iterLimit || dgamma < eps*10^3)
+        fprintf(['Newton iteration terminated.\n'...
+            'abs(P33) = %4.3e dgamma = %4.3e iterCount = %d\n'],...
+            abs(P(3,3)),dgamma,iterCount);
+        break;
+    end
+end
+\end{lstlisting}
+
+\section{Calculations and Results}
+\lstset{
+basicstyle=\ttfamily,
+columns=fixed
+}
+\subsection{Consistency tests}
+As we discussed in section \ref{sec:consistency}, we expect our
+numerical differentiation scheme to have an error of
+$\mathcal{O}(h^2)$. Also, a log-log plot of $error$ vs. $h$ would
+validate this if it is a line with $slope=2$. The error in calculation
+of $\mathbf{P}$ by numerical differentiation of $w$ has been
+calculated as
+\begin{align*}
+  error = \frac{||\mathbf{P}_h - \mathbf{P}||}{||\mathbf{P}||}
+\end{align*}
+The error in calculation of $C_{iJkL}$ by numerical differentiation
+of $\mathbf{P}$ has been calculated as
+\begin{align*}
+  error =\frac{\underset{\forall i,J,k,L}{\max}\left(|C^{(h)}_{iJkL}-C_{iJkL}|\right)}{\underset{\forall i,J,k,L}{\max}\left(C_{iJkL}\right)}
+\end{align*}
+\begin{figure}[h]
+  \centering
+  \includegraphics{./img/neoHookConsistency.pdf}  
+  \caption{Error vs. perturbation plot for neoHookean implementation}
+  \label{fig:neoHcon}
+\end{figure}
+We also calculated the slope of the two error plots numerically. Their values are in the range from 1.99 to 2.02. Following shows a sample output for the slopes from the script \texttt{neoHookeanCorrectness.m}
+\begin{lstlisting}[frame=single]
+  Slope of log(errP) vs log(h) = 2.000e+00
+  Slope of log(errTM) vs log(h) = 2.000e+00
+\end{lstlisting}
+
+We tested the plane-stress version of neo-Hookean implementation for consistency separately. The error in $\mathbf{P}$ has been calculated using same equation as for the 3-D neo-Hookean implementation. But the error in tangent modulus is given as
+\begin{align*}
+  error =\frac{\underset{\forall \alpha,\beta,\gamma,\delta}{\max}\left(|C^{(h)(2D)}_{\alpha\beta\gamma\delta}-C^{(2D)}_{\alpha\beta\gamma\delta}|\right)}{\underset{\forall i,J,k,L}{\max}\left(C_{\alpha\beta\gamma\delta}\right)}
+\end{align*}
+This is because $C^{(2D)}_{\alpha\beta\gamma\delta}$ is not merely a subset of components of $C_{iJkL}$ but requires a correction in order to be consistent with plane stress condition. The error plot is as shown in figure \ref{fig:psneoHcon}. As can be seen from the plot and also verified from numerically calculations, slopes of the error-plots are always around $2\pm0.02$ Following is a sample slope output from the script \texttt{planeStressConsistency.m}
+\begin{lstlisting}[frame=single]
+  Slope of log(errP) vs log(h) = 1.997e+00
+  Slope of log(errTM) vs log(h) = 2.012e+00
+\end{lstlisting}
+\begin{figure}[h]
+  \centering
+  \includegraphics{./img/planeStressConsistency.pdf}  
+  \caption{Error vs. perturbation plot for plane stress neoHookean implementation}
+  \label{fig:psneoHcon}
+\end{figure}
+
+\subsection{Material Frame Indifference test}
+
+\begin{align*}
+  Relative\quad\change = \frac{||\mathbf{P}(\mathbf{F}) -\mathbf{Q}\mathbf{P}(\mathbf{F})||}{||\mathbf{P}(\mathbf{F})||}
+\end{align*}
+The error in calculation of $C_{iJkL}$ by numerical differentiation
+of $\mathbf{P}$ has been calculated as
+\begin{align*}
+  error =\frac{\underset{\forall i,J,k,L}{\max}\left(|C^{(h)}_{iJkL}-C_{iJkL}|\right)}{\underset{\forall i,J,k,L}{\max}\left(C_{iJkL}\right)}
+\end{align*}
+Following is a sample output for the MFI test from the script \texttt{neoHookeanCorrectness.m}
+\begin{lstlisting}[frame=single]
+  Relative change in w due to rotation = 8.685e-15
+  Relative change in P due to rotation = 8.215e-15
+  Relative change in TM due to rotation = 1.962e-14
+\end{lstlisting}
+
+\subsection{Isotropy Test}
+
+The following shows a sample output from the script \texttt{neoHookeanCorrectness.m}
+
+\begin{lstlisting}[frame=single]
+  Relative change in w for symmetry test = 6.790e-15
+  Relative change in P for symmetry test = 4.213e-15
+  Relative change in TM for symmetry test = 6.217e-15
+\end{lstlisting}
+
+\subsection{Plane Stress Examples}
+
+\begin{enumerate}
+\item Uniaxial deformation
+\item Equibiaxial deformation
+\end{enumerate}
+
+\section{Discussion and Conclusions}
+
+
+\section{Source Code Listing}
+
+
+
+\end{document}
+
+\message{ !name(p2.tex) !offset(-548) }

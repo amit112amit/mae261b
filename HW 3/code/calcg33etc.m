@@ -1,0 +1,155 @@
+function [strEngDen,PKstress,Ctilda,otherData] = calcg33etc(a_alpha_sub,...
+    A_alpha_sub,g33,H,lame1,mu,isPlaneStress)
+%CALCG33 Planes stress neo-Hookean for curvilinear co-ordinates
+%   a_alpha is tangent basis vector for mid-plane in spatial configuration
+%   A_alpha is dual basis vector for mid-plane in reference configuration
+%   g33 is square of thickness stretch
+%   strEngDen is strain energy density and
+%   PKstress is Piola-Kirchhoff Stress
+
+dim = 3;
+
+Lambda = sqrt(g33); % The lambda from our notation in class notes
+
+% a_3 is same as a3
+a_3 = cross(a_alpha_sub(:,1),a_alpha_sub(:,2));
+a_3 = a_3/norm(a_3);
+
+g = [a_alpha_sub,a_3];
+
+g_ij = g.'*g; % metric tensor
+
+gij = inv(g_ij); % dual metric tensor
+
+g_dual = zeros(3);
+for i=1:3
+    g_dual(:,i) = gij(i,1)*g(:,1) + gij(i,2)*g(:,2) + gij(i,3)*g(:,3);
+end
+
+% A3 is same as A_3
+A3 = cross(A_alpha_sub(:,1),A_alpha_sub(:,2));
+A3 = A3/norm(A3);
+
+G = [A_alpha_sub,A3];
+
+G_ij = G.'*G; % metric tensor
+
+Gij = inv(G_ij); % dual metric tensor
+G_dual = zeros(3);
+for i=1:3
+    G_dual(:,i) = Gij(i,1)*G(:,1) + Gij(i,2)*G(:,2) + Gij(i,3)*G(:,3);
+end
+
+sqrt_A = sqrt(det(G_ij));
+
+A_alpha_sup = G_dual(:,1:2);
+
+
+if(isPlaneStress)
+    tol = 10^(-12);
+    maxIter = 100;
+    
+    while(maxIter > 0)
+        % Calculate deformation gradient
+        F = a_alpha_sub(:,1)*(A_alpha_sup(:,1)).' +...
+            a_alpha_sub(:,2)*(A_alpha_sup(:,2)).' + Lambda*a_3*A3.';
+        
+        [strEngDen,PKstress,C_iJkL] = neoHookean(F,lame1,mu);
+        
+        T = (a_3*A3.').*PKstress;
+        T = sum(sum(T));
+        if(abs(T) < tol)
+            break;
+        end
+        
+        % The Newton iteration update
+        dLambda = -T/C_iJkL(3,3,3,3);
+        if(abs(dLambda) < eps)
+            break;
+        end
+        Lambda = Lambda + dLambda;
+        maxIter = maxIter - 1;
+    end
+else
+    F = a_alpha_sub(:,1)*(A_alpha_sup(:,1)).' +...
+        a_alpha_sub(:,2)*(A_alpha_sup(:,2)).' + Lambda*a_3*A3.';
+    
+    [strEngDen,PKstress,C_iJkL] = neoHookean(F,lame1,mu);
+    
+end
+
+% To derive C_IJKL from C_iJkL
+C_IJKL = zeros(dim,dim,dim,dim);
+Finv = inv(F);
+S = F\PKstress;
+for I=1:dim
+    for J=1:dim
+        for K=1:dim
+            for L=1:dim
+                for p=1:dim
+                    for q=1:dim
+                        C_IJKL(I,J,K,L) = C_IJKL(I,J,K,L) +...
+                            0.5*Finv(I,p)*Finv(K,q)*(C_iJkL(p,J,q,L)-...
+                            (p==q)*S(J,L));
+                    end
+                end
+            end
+        end
+    end
+end
+
+Cijkl = zeros(dim,dim,dim,dim);
+for i=1:dim
+    for j=1:dim
+        for k=1:dim
+            for l=1:dim
+                                
+                for I=1:dim
+                    for J=1:dim
+                        for K=1:dim
+                            for L=1:dim
+                                Cijkl(i,j,k,l) = Cijkl(i,j,k,l) +...
+                                    C_IJKL(I,J,K,L)*...
+                                   G_dual(I,i)*G_dual(J,j)*...
+                                   G_dual(K,k)*G_dual(L,l);                               
+                            end
+                        end
+                    end
+                end
+                
+            end
+        end
+    end
+end
+
+if(isPlaneStress)
+    Ctilda = zeros(2,2,2,2);
+    for p=1:2
+        for q=1:2
+            for r=1:2
+                for s=1:2
+                    Ctilda(p,q,r,s) = Cijkl(p,q,r,s) - Cijkl(p,q,3,3)*...
+                        Cijkl(3,3,r,s)/Cijkl(3,3,3,3);
+                end
+            end
+        end
+    end
+else
+    Ctilda = Cijkl(1:2,1:2,1:2,1:2);
+end
+
+% Calculating the components of Tau
+tauij = zeros(3);
+for i=1:3
+    for j=1:3
+        tmp = S*G_dual(:,j);
+        tauij(i,j) = dot(G_dual(:,i),tmp);
+    end
+end
+
+otherData.sqrt_A = sqrt_A;
+otherData.tau = tauij;
+otherData.n_alpha = PKstress*A_alpha_sup*H;
+
+end
+

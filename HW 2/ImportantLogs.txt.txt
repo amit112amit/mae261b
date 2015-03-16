@@ -1,0 +1,18 @@
+T6QuadConsistency for quadOrder=1
+
+Slope of log(errF) vs log(h) = 2.000e+00
+Slope of log(errK) vs log(h) = 2.000e+00
+Average error in P:8.507e-05
+Average error in TM:1.986e-05
+
+For zero deformation:
+	Shape Fn	Quad Order	Rank
+	  Lin		  1		  3.656000e+00
+	  Quad		  1		  3.738000e+00
+	  Quad		  2		  9.381000e+00
+
+For random finite deformation:
+	Shape Fn	Quad Order	Rank
+	  Lin		  1		  4
+	  Quad		  1		  4
+	  Quad		  2		  10
