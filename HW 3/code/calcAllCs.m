@@ -1,15 +1,19 @@
-function [strEngDen,PKstress,Ctilda,otherData] = calcg33etc(a_alpha_sub,...
-    A_alpha_sub,g33,H,lame1,mu,isPlaneStress)
-%CALCG33 Planes stress neo-Hookean for curvilinear co-ordinates
+function [strEngDen,PKstress,Ctilda,otherData] = calcAllCs(a_alpha_sub,...
+    A_alpha_sub,thicknessStretch,H,lame1,mu,isPlaneStress)
+%CALCALLCS Planes stress neo-Hookean for curvilinear co-ordinates
 %   a_alpha is tangent basis vector for mid-plane in spatial configuration
 %   A_alpha is dual basis vector for mid-plane in reference configuration
-%   g33 is square of thickness stretch
+%   thicknessStretch is thickness stretch
 %   strEngDen is strain energy density and
 %   PKstress is Piola-Kirchhoff Stress
 
 dim = 3;
 
-Lambda = sqrt(g33); % The lambda from our notation in class notes
+if(~isPlaneStress)
+    Lambda = 1;
+else
+    Lambda = thicknessStretch; % The lambda from our notation in notes
+end
 
 % a_3 is same as a3
 a_3 = cross(a_alpha_sub(:,1),a_alpha_sub(:,2));
@@ -46,8 +50,8 @@ A_alpha_sup = G_dual(:,1:2);
 
 
 if(isPlaneStress)
-    tol = 10^(-12);
     maxIter = 100;
+    tol = lame1*10^(-16);
     
     while(maxIter > 0)
         % Calculate deformation gradient
@@ -56,20 +60,24 @@ if(isPlaneStress)
         
         [strEngDen,PKstress,C_iJkL] = neoHookean(F,lame1,mu);
         
-        T = (a_3*A3.').*PKstress;
-        T = sum(sum(T));
+        T = a_3'*(PKstress*A3);
+        
         if(abs(T) < tol)
+            %             fprintf('Tolerance met!\n');
             break;
         end
         
         % The Newton iteration update
         dLambda = -T/C_iJkL(3,3,3,3);
         if(abs(dLambda) < eps)
+            %             fprintf('Newton update is too small!\n');
             break;
         end
         Lambda = Lambda + dLambda;
         maxIter = maxIter - 1;
     end
+   %fprintf('calcAllCs(): T reduced to %17.16f after %d iterations.\n',...
+   %          T,100 - maxIter);
 else
     F = a_alpha_sub(:,1)*(A_alpha_sup(:,1)).' +...
         a_alpha_sub(:,2)*(A_alpha_sup(:,2)).' + Lambda*a_3*A3.';
@@ -103,15 +111,15 @@ for i=1:dim
     for j=1:dim
         for k=1:dim
             for l=1:dim
-                                
+                
                 for I=1:dim
                     for J=1:dim
                         for K=1:dim
                             for L=1:dim
                                 Cijkl(i,j,k,l) = Cijkl(i,j,k,l) +...
                                     C_IJKL(I,J,K,L)*...
-                                   G_dual(I,i)*G_dual(J,j)*...
-                                   G_dual(K,k)*G_dual(L,l);                               
+                                    G_dual(I,i)*G_dual(J,j)*...
+                                    G_dual(K,k)*G_dual(L,l);
                             end
                         end
                     end
@@ -150,6 +158,7 @@ end
 otherData.sqrt_A = sqrt_A;
 otherData.tau = tauij;
 otherData.n_alpha = PKstress*A_alpha_sup*H;
+otherData.Lambda = Lambda;
 
 end
 

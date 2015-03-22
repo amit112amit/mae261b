@@ -57,27 +57,14 @@ BC{1,1} = [constrainedSide1.';constrainedSide2.';constrainedSide3.';...
 BC{1,2} = [2*ones(xlim+1,1);ones(ylim+1,1);2*ones(xlim+1,1);...
     ones(ylim+1,1);3*ones(size(X,2),1)];
 
-u_BC = (0.5)*xlim;
+factor = (-0.25:0.05:4.5).';
 
-BC{1,3} = [-1*u_BC*ones(xlim+1,1);u_BC*ones(ylim+1,1);...
-    u_BC*ones(xlim+1,1);-1*u_BC*ones(ylim+1,1);zeros(size(X,2),1)];
+u_BC = (factor)*xlim;
+meanF11 = zeros(size(u_BC));
+meanP11 = zeros(size(u_BC));
+meanP22 = zeros(size(u_BC));
 
-prescribedDOF = getBCmatrix(BC,X);
-
-% Generate ID matrix
-ID = zeros(numNodes*dofPerNode,2);
-ID(:,1) = 1:numNodes*dofPerNode;
-
-unknownDOFs = (1:numNodes*dofPerNode).';
-unknownDOFs(prescribedDOF(:,1)) = [];
-
-globalEqNum = 1;
-for i = 1:numel(unknownDOFs)
-    ID(unknownDOFs(i),2) = globalEqNum;
-    globalEqNum = globalEqNum + 1;
-end
-
-%******************************** Assembly *******************************%
+X_orig = X; % Back up original reference config
 
 % External transverse load
 f = [0;0;0];
@@ -86,8 +73,11 @@ f = [0;0;0];
 quadOrder = 1;
 
 % Thickness of the membrane
-H = 0.001*xlim*ones(size(IEN,1),1);
-thicknessStretch = ones(size(IEN,1),1);
+H = 0.1*xlim*ones(size(IEN,1),1);
+H_orig = H;
+
+% The thickness stretch
+L = ones(size(IEN,1),1);
 
 % Elastic constants
 lambda = 5*10^8;
@@ -98,88 +88,128 @@ rng(0);
 
 u = zeros(size(X,1),size(X,2)); % Uncomment for zero deformation case
 
-% Using linear indexing as the global node number is same as linear index
-u(prescribedDOF(:,1)) = prescribedDOF(:,2);
+u_steps =10*ones(numel(u_BC),1) + 5*((1:numel(u_BC)).'-1);
 
-X = reshape(X,[dofPerNode*numNodes,1]);
-u_total = reshape(u,[dofPerNode*numNodes,1]);
-
-u_steps = 10;
-u = u_total/u_steps;
-
-tol = norm(mu)*10^(-15);
-
-X_orig = X; % Back up original reference config
-H_orig = H;
-
-for i=1:u_steps
-    x = X + u;   
-    maxIter = 100;    
-    % Newton Iterations   
-    while(1)
-        [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,...
-            IEN,ID);
-        kiakb = sparse(kiakb);
-        u_Newton = -kiakb\r;
-        if(norm(r) < tol)
-            fprintf('Converged. Norm(r) : %17.16f\n',norm(r));
-            break;
-        end
-        if(norm(u_Newton) < eps*10)
-            fprintf('Newton update is very small: %17.16f\n',...
-                norm(u_Newton));
-            break;
-        end
-        if(maxIter < 0)
-            fprintf('Maximum iterations exceeded.\n');
-            break;
-        end
-        maxIter = maxIter - 1;
-        x(unknownDOFs) = x(unknownDOFs) + u_Newton;        
-        %fprintf('Iteration Number: %d norm(r): %17.16f\n',100-maxIter,...
-        %    norm(r));
-    end    
-    X = x;
-    H = H.*L;
-end
-
-%******************* Uniformity of Deformation Gradient ******************%
-
-% To check for uniform deformation gradient we will caclulate it at
-% quadrature point of each element.
-
-F = zeros(3,3,size(IEN,1));
-P = zeros(3,3,size(IEN,1));
-
-tmp2 = (1:dofPerNode).'; % We will use it to calculate global DOF number
-tmp2 = repmat(tmp2,[size(IEN,2),1]);
-Lambda = H./H_orig;
-for z=1:size(IEN,1)
-    eleNodeNum = IEN(z,:);    
-    % Fancy stuff to calculate globalDOF numbers for the global node
-    % numbers without using for-loop
-    tmp1 = repmat(eleNodeNum,[dofPerNode,1]);
-    tmp1 = reshape(tmp1,[numel(tmp1),1]);
-    eleGlobalDOF = dofPerNode*(tmp1-1) + tmp2;   
+for q=1:size(u_BC,1)
     
-    X_ele = X_orig(eleGlobalDOF);
-    x_ele = x(eleGlobalDOF);
-    [F(:,:,z),P(:,:,z)] = calcDefGrad(x_ele,X_ele,Lambda(z),size(IEN,2),...
-        quadOrder,lambda,mu);
-end
-
-meanF = mean(F,3);
-meanP = mean(P,3);
-for z=1:size(IEN,1)
-    if(norm(abs(F(:,:,z) - meanF)) > 10^(-12))
-        error('Deformation gradient is not uniform!\n');
+    % Need to reset X to X_orig
+    X = X_orig;
+    H = H_orig;    
+    
+    BC{1,3} = [-1*u_BC(q)*ones(xlim+1,1);u_BC(q)*ones(ylim+1,1);...
+        u_BC(q)*ones(xlim+1,1);-1*u_BC(q)*ones(ylim+1,1);...
+        zeros(size(X,2),1)];
+    
+    prescribedDOF = getBCmatrix(BC,X);
+    
+    % Generate ID matrix
+    ID = zeros(numNodes*dofPerNode,2);
+    ID(:,1) = 1:numNodes*dofPerNode;
+    
+    unknownDOFs = (1:numNodes*dofPerNode).';
+    unknownDOFs(prescribedDOF(:,1)) = [];
+    
+    globalEqNum = 1;
+    for i = 1:numel(unknownDOFs)
+        ID(unknownDOFs(i),2) = globalEqNum;
+        globalEqNum = globalEqNum + 1;
     end
+    
+    %****************************** Assembly *****************************%
+    
+    % Use linear indexing as the global node number's same as linear index
+    u(prescribedDOF(:,1)) = prescribedDOF(:,2);
+    
+    X = reshape(X,[dofPerNode*numNodes,1]);
+    u_total = reshape(u,[dofPerNode*numNodes,1]);
+    
+    u = u_total/u_steps(q);
+    
+    tol = norm(mu)*H*10^(-12);
+    
+    for i=1:u_steps(q)
+        x = X + u;
+        maxIter = 100;
+        % Newton Iterations
+        while(1)
+            [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,...
+                mu,IEN,ID,L);
+            kiakb = sparse(kiakb);
+            u_Newton = -kiakb\r;
+            if(norm(r) < tol)
+                %fprintf('Converged. Norm(r) : %17.16f\n',norm(r));
+                break;
+            end
+            if(norm(u_Newton) < eps*10)
+                %fprintf('Newton update is very small: %17.16f\n',...
+                %norm(u_Newton));
+                break;
+            end
+            if(maxIter < 0)
+                %fprintf('Maximum iterations exceeded.\n');
+                break;
+            end
+            maxIter = maxIter - 1;
+            x(unknownDOFs) = x(unknownDOFs) + u_Newton;
+        end
+        fprintf(['Iterations: %d norm(r): %17.16f norm(u_Newton):,'...
+            '%17.16f\n'],100-maxIter,norm(r),norm(u_Newton));
+        X = x;        
+        H = H.*L;
+    end
+    
+    %***************** Uniformity of Deformation Gradient ****************%
+    
+    % To check for uniform deformation gradient we will caclulate it at
+    % quadrature point of each element.
+    
+    F = zeros(3,3,size(IEN,1));
+    P = zeros(3,3,size(IEN,1));
+    
+    tmp2 = (1:dofPerNode).'; % We use it to calculate global DOF number
+    tmp2 = repmat(tmp2,[size(IEN,2),1]);
+    Lambda = H./H_orig;
+    for z=1:size(IEN,1)
+        eleNodeNum = IEN(z,:);
+        % Fancy stuff to calculate globalDOF numbers for the global node
+        % numbers without using for-loop
+        tmp1 = repmat(eleNodeNum,[dofPerNode,1]);
+        tmp1 = reshape(tmp1,[numel(tmp1),1]);
+        eleGlobalDOF = dofPerNode*(tmp1-1) + tmp2;
+        
+        X_ele = X_orig(eleGlobalDOF);
+        x_ele = x(eleGlobalDOF);
+        [F(:,:,z),P(:,:,z)] = calcFandP(x_ele,X_ele,Lambda(z),...
+            size(IEN,2),quadOrder,lambda,mu);
+    end
+    
+    meanF = mean(F,3);
+    meanP = mean(P,3);
+    for z=1:size(IEN,1)
+        if(norm(abs(F(:,:,z) - meanF)) > 10^(-12))
+            fprintf('Deformation gradient is not uniform %17.16f!\n',...
+                norm(abs(F(:,:,z) - meanF)));
+        end
+    end
+    fprintf('q = %d\n',q);
+    fprintf('mean F11 = %17.16f mean F22 = %17.16f\n',meanF(1,1),...
+        meanF(2,2));
+    fprintf('mean P11 = %17.16f mean P22 = %17.16f\n\n',meanP(1,1),...
+        meanP(2,2));
+    meanF11(q) = meanF(1,1);
+    meanP11(q) = meanP(1,1);
+    meanP22(q) = meanP(2,2);
+    
 end
 
-fprintf('mean F11 = %17.16f mean F22 = %17.16f\n',meanF(1,1),meanF(2,2));
-fprintf('mean P11 = %17.16f mean P22 = %17.16f\n',meanP(1,1),meanP(2,2));
+toc;
 
-
+figure(1);
+plot(meanF11,meanP11,meanF11,meanP22);
+xlabel('F11');
+ylabel('Component of first Piola-Kirchoff Stress');
+title('Stress-strain behaviour for Equi-biaxial strain');
+legend('P11','P22','Location','southeast');
 %***************** Plot the reference and final shapes *******************%
 
 % x = reshape(x,3,[]);

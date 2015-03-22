@@ -17,8 +17,15 @@ quadOrder = 1;
 H = 1;
 lambda = 5*10^8;
 mu = 1.5*10^6;
+Lambda = 0.5;
 
-[W,fi,fe,K] = T3MembraneEle(X,x,H,f,quadOrder,lambda,mu);
+x = reshape(x,[dim*numNodes,1]);
+X = reshape(X,[dim*numNodes,1]);
+
+[W,fi,fe,K] = T3MembraneEle(X,x,H,f,quadOrder,lambda,mu,Lambda);
+fi = reshape(fi,[dim,numNodes]);
+%fe = reshape(fe,[dim,numNodes]);
+K = reshape(K,[dim,numNodes,dim,numNodes]);
 
 %h = rand(1,1)*10^-5;
 h = logspace(-6,-3);
@@ -27,11 +34,11 @@ for z=1:length(h)
     fi_approx = zeros(dim,numNodes);
     for i=1:dim
         for a=1:numNodes
-            x(i,a) = x(i,a) + h(z);
-            [Wp,~,~,~] = T3MembraneEle(X,x,H,f,quadOrder,lambda,mu);
-            x(i,a) = x(i,a) - 2*h(z);
-            [Wm,~,~,~] = T3MembraneEle(X,x,H,f,quadOrder,lambda,mu);
-            x(i,a) = x(i,a) + h(z);
+            x(3*(a-1)+i) = x(3*(a-1)+i) + h(z);
+            [Wp,~,~,~] = T3MembraneEle(X,x,H,f,quadOrder,lambda,mu,Lambda);
+            x(3*(a-1)+i) = x(3*(a-1)+i) - 2*h(z);
+            [Wm,~,~,~] = T3MembraneEle(X,x,H,f,quadOrder,lambda,mu,Lambda);
+            x(3*(a-1)+i) = x(3*(a-1)+i) + h(z);
 
             fi_approx(i,a) = (Wp - Wm)/(2*h(z));
         end
@@ -51,13 +58,15 @@ for z=1:length(h)
         for a=1:numNodes
             for k=1:dim
                 for b=1:numNodes
-                    x(k,b) = x(k,b) + h(z);
+                    x(3*(b-1)+k) = x(3*(b-1)+k) + h(z);
                     [~,fp,~,~] = T3MembraneEle(X,x,H,f,quadOrder,...
-                        lambda,mu);
-                    x(k,b) = x(k,b) - 2*h(z);
+                        lambda,mu,Lambda);
+                    x(3*(b-1)+k) = x(3*(b-1)+k) - 2*h(z);
                     [~,fm,~,~] = T3MembraneEle(X,x,H,f,quadOrder,...
-                        lambda,mu);
-                    x(k,b) = x(k,b) + h(z);
+                        lambda,mu,Lambda);
+                    x(3*(b-1)+k) = x(3*(b-1)+k) + h(z);
+                    fp = reshape(fp,[dim,numNodes]);
+                    fm = reshape(fm,[dim,numNodes]);
                     K_approx(i,a,k,b) = (fp(i,a) - fm(i,a))/(2*h(z));
                 end
             end

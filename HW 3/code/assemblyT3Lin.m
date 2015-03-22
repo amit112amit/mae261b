@@ -1,4 +1,5 @@
-function [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,IEN,ID)
+function [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,IEN,...
+    ID,L)
 %AssemblyT3Lin Performs assembly and returns potential energy, residual
 %force and corresponding stiffness.
 % IEN is the connectivity matrix of the mesh
@@ -6,6 +7,7 @@ function [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,IEN,ID)
 % Other input parameters are same as for T3MembraneEle
 % H should be an array for thickness of all elements ordered as per element
 % number
+% L is an array of thickness stretches for each element
 %
 % W is the potential energy
 % r is the residual of the fint - fext
@@ -22,8 +24,6 @@ kiakb = zeros(numUnknownDOF,numUnknownDOF);
 fi_global = zeros(numUnknownDOF,1);
 fe_global = zeros(numUnknownDOF,1);
 W = 0;
-% The thickness stretch
-L = zeros(numEle,1);
 
 tmp2 = (1:dofPerNode).'; % We will use it to calculate global DOF number
 tmp2 = repmat(tmp2,[nodesPerEle,1]);
@@ -43,7 +43,7 @@ for i=1:numEle
     uele = xele - Xele; % displacement    
     
     [W_ele_int,fi_ele,fe_ele,K_ele,L(i)] = T3MembraneEle(Xele,xele,H(i),...
-        f,quadOrder,lambda,mu);    
+        f,quadOrder,lambda,mu,L(i));    
     
     % Including the energy contribution from constrained DOFs too.
     W_ele_ext = fe_ele.'*uele;    

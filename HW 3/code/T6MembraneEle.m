@@ -1,5 +1,5 @@
 function [StrainEnergy,fint_ia,fext_ia,Kiakb] = T6MembraneEle( X,x,H,f,...
-    quadOrder,lambda,mu )
+    quadOrder,lambda,mu,thicknessStretch)
 %T6MEMBRANEELE Calculates strain energy, internal force vector and
 %stiffness modulus for the triangular 3 node membrane element
 %   X is reference configuration, x is deformed configuration, H is
@@ -10,8 +10,10 @@ function [StrainEnergy,fint_ia,fext_ia,Kiakb] = T6MembraneEle( X,x,H,f,...
 dim = 3;
 numNodes = 6;
 
-g33 = 1;
-isPlaneStress = false;
+x = reshape(x,[dim,numNodes]);
+X = reshape(X,[dim,numNodes]);
+
+isPlaneStress = true;
 
 % Get the quadrature points and weights
 [points,weights] = TriGaussQuad(quadOrder);
@@ -28,8 +30,8 @@ for z=1:length(weights)
     A_alpha_sub = X*DN;
     
     % Calculate thickness stretch L
-    [strEngDen,~,Ctilda,otherData]= calcg33etc(a_alpha_sub,...
-        A_alpha_sub,g33,H,lambda,mu,isPlaneStress);
+    [strEngDen,~,Ctilda,otherData]= calcAllCs(a_alpha_sub,...
+        A_alpha_sub,thicknessStretch,H,lambda,mu,isPlaneStress);
     sqrt_A = otherData.sqrt_A;
     
     % Calculate the strain energy from the density
@@ -98,6 +100,11 @@ for z=1:length(weights)
     Kiakb = Kiakb + (K_material + K_geometric)*sqrt_A*H*weights(z);
     
 end
+
+% Reshape all the output matrices
+Kiakb = reshape(Kiakb,[dim*numNodes,dim*numNodes]);
+fint_ia = reshape(fint_ia,[dim*numNodes,1]);
+fext_ia = reshape(fext_ia,[dim*numNodes,1]);
 
 end
 
