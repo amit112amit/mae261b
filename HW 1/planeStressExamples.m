@@ -1,9 +1,7 @@
 % In this script we will use plane stress neo-Hookean implementation to
 % solve for stresses for given uni-axial and equi-bi-axial deformation
 
-clear;
-close all;
-clc;
+clear;close all;clc;
 
 % Stretch ratio should be greater than 0. It should be less than 1 for
 % compression and greater than 1 for elongation
@@ -32,19 +30,13 @@ end
 temp1 = squeeze(P_uni(1,1,:));
 temp2 = squeeze(P_uni(2,2,:));
 figure(1);
-plot(F11,temp1,'--r',F11,temp2,'-.b','LineWidth',2);
-xlabel('Strain');
-ylabel('Stress');
+plot(F11,temp1,'r',F11,temp2,'b','LineWidth',2);
+xlabel('F11');
+ylabel('Component of Piola-Kirchoff Stress');
 legend('P11','P22','Location','southeast');
+title('Stress-strain Behavior under Uniaxial Strain');
 figure(3);
 plot(F11,guessF33);
-%xlim([0,5]);
-%# vertical line
-% hx = graph2d.constantline(1, 'Color',[.7 .7 .7]);
-% changedependvar(hx,'x');
-%# horizontal line
-% hy = graph2d.constantline(0, 'Color',[.7 .7 .7]);
-% changedependvar(hy,'y');
 
 %% Equibiaxial deformation
 F_bi = zeros(2,2,length(F11));
@@ -62,13 +54,7 @@ temp1 = squeeze(P_bi(1,1,:));
 temp2 = squeeze(P_bi(2,2,:));
 figure(2);
 plot(F11,temp1,'--r',F11,temp2,'-.b','LineWidth',2);
-xlabel('Strain');
-ylabel('Stress');
+xlabel('F11');
+ylabel('Component of Piola-Kirchoff Stress');
 legend('P11','P22','Location','southeast');
-%xlim([0,1.6]);
-%# vertical line
-% hx = graph2d.constantline(1, 'Color',[.7 .7 .7]);
-% changedependvar(hx,'x');
-%# horizontal line
-% hy = graph2d.constantline(0, 'Color',[.7 .7 .7]);
-% changedependvar(hy,'y');
+title('Stress-strain Behavior under Equibiaxial Strain');
