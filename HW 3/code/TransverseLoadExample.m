@@ -11,8 +11,8 @@ useT6QuadEle = false;
 % The dimensions for the square membrane in metres.
 xlim = 0.1;
 ylim = 0.1;
-x_incr = 0.02;
-y_incr = 0.02;
+x_incr = 0.01;
+y_incr = 0.01;
 
 x_val = 0:x_incr:xlim;
 y_val = 0:y_incr:ylim;
@@ -65,8 +65,11 @@ temp = [constrainedSide1;constrainedSide2;constrainedSide3;...
 % Remove duplicate rows from the matrix temp
 temp = sortrows(temp);
 difference = abs(diff([temp;[NaN,NaN,NaN]]));
-BC{1,1} = temp(sum(difference,2)~=0,:); % The points to be constrained
-BC{1,2} = 3*ones(size(BC{1,1},1),1); % The direction to be constrained (z)
+temp = temp(sum(difference,2)~=0,:);
+temp = repmat(temp,[3,1]); % The points to be constrained
+BC{1,1} = temp;
+BC{1,2} = [ones(size(temp,1)/3,1);2*ones(size(temp,1)/3,1);...
+    3*ones(size(temp,1)/3,1)];% The direction to be constrained (z)    
 BC{1,3} = zeros(size(BC{1,1},1),1); % Constraint value (0)
 
 prescribedDOF = getBCmatrix(BC,X);
@@ -96,6 +99,7 @@ H = 0.001*ones(size(IEN,1),1);
 
 % The thickness stretch
 L = 0.5*ones(size(IEN,1),1);
+L_orig = L;
 
 % Elastic constants in N/m^2
 lambda = 4*10^6;
@@ -144,10 +148,10 @@ for i=1:f_steps
     while(1)
         if(useT6QuadEle)
             [W,r,kiakb,L] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,...
-                IEN,ID,L);
+                IEN,ID,L_orig);
         else
             [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,...
-                IEN,ID,L);
+                IEN,ID,L_orig);
         end
         %kiakb = sparse(kiakb);
         u_Newton = -kiakb\r;
@@ -184,6 +188,7 @@ xlabel('Force (N)');
 ylabel('Maximum deflection (m)');
 title('Force vs. Deflection Curve');
 
+dim = 3;
 figure(2);
 x = reshape(x,[dim,numNodes]);
-surf(x(1,:),x(2,:),x(3,:));
+surf(xtemp,ytemp,reshape(x(3,:),size(xtemp,1),[]));
