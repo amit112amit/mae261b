@@ -29,7 +29,7 @@ else
     quadOrder = 1;
 end
 
-trisurf(IEN(:,1:3),X(:,1),X(:,2),X(:,3));
+trisurf(IEN(:,1:3),X_T6(:,1),X_T6(:,2),X_T6(:,3));
 hold on;
 scatter3(X(:,1),X(:,2),X(:,3));
 hold off;

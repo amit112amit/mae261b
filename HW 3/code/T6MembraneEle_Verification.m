@@ -23,22 +23,24 @@ Lambda = 0.5;
 X = reshape(X,[dim*numNodes,1]);
 x = reshape(x,[dim*numNodes,1]);
 
-[W,fi,fe,K] = T6MembraneEle(X,x,H,f,quadOrder,lambda,mu,Lambda);
+[W,fi,fe,K,~] = T6MembraneEle(X,x,H,f,quadOrder,lambda,mu,Lambda);
 fi = reshape(fi,[dim,numNodes]);
 %fe = reshape(fe,[dim,numNodes]);
 K = reshape(K,[dim,numNodes,dim,numNodes]);
 
 %h = rand(1,1)*10^-5;
-h = logspace(-6,-3,5);
+h = logspace(-6,-3,10);
 errF = zeros(1,length(h));
 for z=1:length(h)
     fi_approx = zeros(dim,numNodes);
     for i=1:dim
         for a=1:numNodes
             x(3*(a-1)+i) = x(3*(a-1)+i) + h(z);
-            [Wp,~,~,~] = T6MembraneEle(X,x,H,f,quadOrder,lambda,mu,Lambda);
+            [Wp,~,~,~,~] = T6MembraneEle(X,x,H,f,quadOrder,lambda,mu,...
+                Lambda);
             x(3*(a-1)+i) = x(3*(a-1)+i) - 2*h(z);
-            [Wm,~,~,~] = T6MembraneEle(X,x,H,f,quadOrder,lambda,mu,Lambda);
+            [Wm,~,~,~,~] = T6MembraneEle(X,x,H,f,quadOrder,lambda,mu,...
+                Lambda);
             x(3*(a-1)+i) = x(3*(a-1)+i) + h(z);
 
             fi_approx(i,a) = (Wp - Wm)/(2*h(z));
@@ -55,7 +57,7 @@ slope1 = (log(errF(length(h)-1))-log(errF(length(h)-4)))/...
     (log(h(length(h)-1))-log(h(length(h)-4)));
 fprintf('Slope for error in f_internal: %17.16f\n',slope1);
 
-h = logspace(-4,-2,5);
+h = logspace(-4,-2,10);
 errK = zeros(1,length(h));
 for z=1:length(h)
     K_approx = zeros(dim,numNodes,dim,numNodes);
@@ -64,10 +66,10 @@ for z=1:length(h)
             for k=1:dim
                 for b=1:numNodes
                     x(3*(b-1)+k) = x(3*(b-1)+k) + h(z);
-                    [~,fp,~,~] = T6MembraneEle(X,x,H,f,quadOrder,...
+                    [~,fp,~,~,~] = T6MembraneEle(X,x,H,f,quadOrder,...
                         lambda,mu,Lambda);
                     x(3*(b-1)+k) = x(3*(b-1)+k) - 2*h(z);
-                    [~,fm,~,~] = T6MembraneEle(X,x,H,f,quadOrder,...
+                    [~,fm,~,~,~] = T6MembraneEle(X,x,H,f,quadOrder,...
                         lambda,mu,Lambda);
                     x(3*(b-1)+k) = x(3*(b-1)+k) + h(z);
                     fp = reshape(fp,[dim,numNodes]);

@@ -8,12 +8,11 @@ function [BC]  = getBCmatrix(X_BC,X)
 % arranged in order of their global node numbers. The structure of X
 % should be like
 %
-% X = [1 1 2 0 3 1 4;...
+% X = transpose([1 1 2 0 3 1 4;...
 %      0 2 2 0 1 2 2;...
-%      1 1 1 1 1 1 1];
+%      1 1 1 1 1 1 1]);
 % Here, there are 7 nodes and coordinates of third node are (2,2,1)
 
-X = X.';
 dofPerNode = 3;
 
 nodeCoordinates = X_BC{1,1};

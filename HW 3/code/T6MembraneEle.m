@@ -1,4 +1,4 @@
-function [StrainEnergy,fint_ia,fext_ia,Kiakb] = T6MembraneEle( X,x,H,f,...
+function [StrainEnergy,fint_ia,fext_ia,Kiakb,L]= T6MembraneEle( X,x,H,f,...
     quadOrder,lambda,mu,thicknessStretch)
 %T6MEMBRANEELE Calculates strain energy, internal force vector and
 %stiffness modulus for the triangular 3 node membrane element
@@ -105,6 +105,6 @@ end
 Kiakb = reshape(Kiakb,[dim*numNodes,dim*numNodes]);
 fint_ia = reshape(fint_ia,[dim*numNodes,1]);
 fext_ia = reshape(fext_ia,[dim*numNodes,1]);
-
+L = otherData.Lambda;
 end
 

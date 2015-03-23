@@ -19,9 +19,9 @@ numNodes = numel(mesh_x);
 
 % The reference configuration
 X = [reshape(mesh_x,numNodes,1), reshape(mesh_y,numNodes,1),...
-    reshape(mesh_z,numNodes,1)].';
+    reshape(mesh_z,numNodes,1)];
 
-%trisurf(IEN,X(1,:),X(2,:),X(3,:));
+%trisurf(IEN,X(:,1),X(:,2),X(:,3));
 
 
 %****************** Boundary Condition and Meta Arrays *******************%
@@ -31,31 +31,18 @@ X = [reshape(mesh_x,numNodes,1), reshape(mesh_y,numNodes,1),...
 
 dofPerNode = 3;
 
-constrainedSide1 = zeros(3,xlim+1);
-constrainedSide1(1,:) = 0:xlim;
-constrainedSide1(3,:) = ones(1,xlim+1);
-
-constrainedSide2 = zeros(3,ylim+1);
-constrainedSide2(1,:) = xlim*ones(1,xlim+1);
-constrainedSide2(2,:) = 0:ylim;
-constrainedSide2(3,:) = ones(1,xlim+1);
-
-constrainedSide3 = zeros(3,xlim+1);
-constrainedSide3(1,:) = 0:xlim;
-constrainedSide3(2,:) = ylim*ones(1,ylim+1);
-constrainedSide3(3,:) = ones(1,xlim+1);
-
-constrainedSide4 = zeros(3,ylim+1);
-constrainedSide4(1,:) = zeros(1,ylim+1);
-constrainedSide4(2,:) = 0:ylim;
-constrainedSide4(3,:) = ones(1,xlim+1);
+constrainedSide1 = X(X(:,2)== 0,:);
+constrainedSide2 = X(X(:,1)== xlim,:);
+constrainedSide3 = X(X(:,2)== ylim,:);
+constrainedSide4 = X(X(:,1)== 0,:);
 
 BC = cell(1,3);
-BC{1,1} = [constrainedSide1.';constrainedSide2.';constrainedSide3.';...
-    constrainedSide4.';X.'];
+BC{1,1} = [constrainedSide1;constrainedSide2;constrainedSide3;...
+    constrainedSide4;X];
 
-BC{1,2} = [2*ones(xlim+1,1);ones(ylim+1,1);2*ones(xlim+1,1);...
-    ones(ylim+1,1);3*ones(size(X,2),1)];
+BC{1,2} = [2*ones(size(constrainedSide1,1),1);...
+    ones(size(constrainedSide2,1),1);2*ones(size(constrainedSide3,1),1);...
+    ones(size(constrainedSide4,1),1);3*ones(size(X,1),1)];
 
 factor = (-0.25:0.05:4.5).';
 
@@ -86,19 +73,18 @@ mu = 1.5*10^6;
 % Set the initial guess for displacement
 rng(0);
 
-u = zeros(size(X,1),size(X,2)); % Uncomment for zero deformation case
-
-u_steps =10*ones(numel(u_BC),1) + 5*((1:numel(u_BC)).'-1);
+u_steps = ceil(abs(u_BC)/0.3) + 5;
 
 for q=1:size(u_BC,1)
     
     % Need to reset X to X_orig
     X = X_orig;
-    H = H_orig;    
+    H = H_orig;
     
-    BC{1,3} = [-1*u_BC(q)*ones(xlim+1,1);u_BC(q)*ones(ylim+1,1);...
-        u_BC(q)*ones(xlim+1,1);-1*u_BC(q)*ones(ylim+1,1);...
-        zeros(size(X,2),1)];
+    BC{1,3} = [-1*u_BC(q)*ones(size(constrainedSide1,1),1);...
+        u_BC(q)*ones(size(constrainedSide2,1),1);...
+        u_BC(q)*ones(size(constrainedSide3,1),1);...
+        -1*u_BC(q)*ones(size(constrainedSide4,1),1);zeros(size(X,1),1)];
     
     prescribedDOF = getBCmatrix(BC,X);
     
@@ -116,16 +102,19 @@ for q=1:size(u_BC,1)
     end
     
     %****************************** Assembly *****************************%
+    index = [ceil(prescribedDOF(:,1)/3),mod(prescribedDOF(:,1),3)];
+    index(index==0) = 3;
+    u = zeros(numNodes,dofPerNode);
+    for i=1:size(index,1)
+        u(index(i,1),index(i,2)) = prescribedDOF(i,2);
+    end
     
-    % Use linear indexing as the global node number's same as linear index
-    u(prescribedDOF(:,1)) = prescribedDOF(:,2);
-    
-    X = reshape(X,[dofPerNode*numNodes,1]);
-    u_total = reshape(u,[dofPerNode*numNodes,1]);
+    X = reshape(X.',[dofPerNode*numNodes,1]);
+    u_total = reshape(u.',[dofPerNode*numNodes,1]);
     
     u = u_total/u_steps(q);
     
-    tol = norm(mu)*H*10^(-12);
+    tol = norm(mu)*norm(H)*10^(-12);
     
     for i=1:u_steps(q)
         x = X + u;
@@ -152,9 +141,9 @@ for q=1:size(u_BC,1)
             maxIter = maxIter - 1;
             x(unknownDOFs) = x(unknownDOFs) + u_Newton;
         end
-        fprintf(['Iterations: %d norm(r): %17.16f norm(u_Newton):,'...
+        fprintf(['Iterations: %d norm(r): %17.16f norm(u_Newton):',...
             '%17.16f\n'],100-maxIter,norm(r),norm(u_Newton));
-        X = x;        
+        X = x;
         H = H.*L;
     end
     
@@ -177,7 +166,8 @@ for q=1:size(u_BC,1)
         tmp1 = reshape(tmp1,[numel(tmp1),1]);
         eleGlobalDOF = dofPerNode*(tmp1-1) + tmp2;
         
-        X_ele = X_orig(eleGlobalDOF);
+        temp = X_orig.';        
+        X_ele = temp(eleGlobalDOF);        
         x_ele = x(eleGlobalDOF);
         [F(:,:,z),P(:,:,z)] = calcFandP(x_ele,X_ele,Lambda(z),...
             size(IEN,2),quadOrder,lambda,mu);
@@ -205,7 +195,7 @@ end
 toc;
 
 figure(1);
-plot(meanF11,meanP11,meanF11,meanP22);
+plot(meanF11(1:76),meanP11(1:76),meanF11(1:76),meanP22(1:76));
 xlabel('F11');
 ylabel('Component of first Piola-Kirchoff Stress');
 title('Stress-strain behaviour for Equi-biaxial strain');

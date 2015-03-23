@@ -1,22 +1,31 @@
-%% Testing T6 mesh generation
+%% Driver for square membrane deformed under transverse load problem
 
-close all; clear; clc;
-useT6QuadEle = true;
-%************************** Generate the mesh ****************************%
+clear; close all; clc;
+tic;
 
-% For rectangular mesh
-xlim = 1;
-ylim = 1;
-zlim = 1;
-[mesh_x,mesh_y,mesh_z] = meshgrid(0:xlim,0:ylim,1:zlim);
+% Flag to control which element to use
+useT6QuadEle = false;
 
-% Generate the mesh
+%**************************** Generate Mesh ******************************%
+
+% The dimensions for the square membrane in metres.
+xlim = 0.1;
+ylim = 0.1;
+x_incr = 0.02;
+y_incr = 0.02;
+
+x_val = 0:x_incr:xlim;
+y_val = 0:y_incr:ylim;
+z_val = 1;
+[mesh_x,mesh_y,mesh_z] = meshgrid(x_val,y_val,z_val);
+
+% Generate the mesh with 3-node triangles
 IEN = delaunay(mesh_x,mesh_y);
 
-% Convert the mesh grid points into x_ia
+% Convert the mesh grid points into transpose(x_ia)
 numNodes = numel(mesh_x);
 
-% The reference configuration
+% The node co-ordinates for 3-node triangles
 X = [reshape(mesh_x,numNodes,1), reshape(mesh_y,numNodes,1),...
     reshape(mesh_z,numNodes,1)];
 
@@ -44,9 +53,21 @@ dofPerNode = 3;
 % The Boundary condition cell array
 BC = cell(1,3);
 
-BC{1,1} = [0,0,1;0,0,1;0,0,1]; % The points to be constrained
-BC{1,2} = [1;2;3]; % The direction to be constrained (z)
-BC{1,3} = [0.001;0.001;0.001]; % Constraint value (0)
+% Get co-ordinates of all nodes on the sides of the square membrane
+constrainedSide1 = X(X(:,2)== 0,:);
+constrainedSide2 = X(X(:,1)== xlim,:);
+constrainedSide3 = X(X(:,2)== ylim,:);
+constrainedSide4 = X(X(:,1)== 0,:);
+
+temp = [constrainedSide1;constrainedSide2;constrainedSide3;...
+    constrainedSide4];
+
+% Remove duplicate rows from the matrix temp
+temp = sortrows(temp);
+difference = abs(diff([temp;[NaN,NaN,NaN]]));
+BC{1,1} = temp(sum(difference,2)~=0,:); % The points to be constrained
+BC{1,2} = 3*ones(size(BC{1,1},1),1); % The direction to be constrained (z)
+BC{1,3} = zeros(size(BC{1,1},1),1); % Constraint value (0)
 
 prescribedDOF = getBCmatrix(BC,X);
 
@@ -86,12 +107,18 @@ mu = 4*10^4;
 H_orig = H;
 X_orig = X;
 
-u_z = 0.01*rand(numNodes,1);
+% Calculate initial guess for displacement in z-direction.
+% We are taking advantage of features peculiar to mesh geometry when using
+% reshape()
+xtemp = reshape(X(:,1),sqrt(numNodes),sqrt(numNodes));
+ytemp = reshape(X(:,2),sqrt(numNodes),sqrt(numNodes));
+u_z = 10^(-)*xlim*(sin(xtemp*pi/xlim)*sin(ytemp*pi/ylim));
+u_z = reshape(u_z,numNodes,1);
 
 % Set x and y components of displacement to 0
 u = [zeros(numNodes,2),u_z];
 
-% Apply boundary condition u_z = 0 on constrained DOF
+% Apply boundary condition u_z = 0 on the nodes on sides of the square.
 rowCol = [ceil(prescribedDOF(:,1)/3),mod(prescribedDOF(:,1),3)];
 rowCol(rowCol==0) = 3;
 for i=1:size(rowCol,1)

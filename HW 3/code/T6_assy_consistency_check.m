@@ -11,11 +11,6 @@ ylim = 1;
 zlim = 1;
 [mesh_x,mesh_y,mesh_z] = meshgrid(0:xlim,0:ylim,1:zlim);
 
-% For a single triangle
-% mesh_x = [1;0;1];
-% mesh_y = [1;0;0];
-% mesh_z = [1;1;1];
-
 % Generate the mesh
 IEN = delaunay(mesh_x,mesh_y);
 
@@ -24,33 +19,29 @@ numNodes = numel(mesh_x);
 
 % The reference configuration
 X = [reshape(mesh_x,numNodes,1), reshape(mesh_y,numNodes,1),...
-    reshape(mesh_z,numNodes,1)].';
+    reshape(mesh_z,numNodes,1)];
 
-trisurf(IEN,X(1,:),X(2,:),X(3,:));
+% Generate T6 mesh
+[IEN,X] = convertToT6Mesh(IEN,X);
+numNodes = size(X,1);
 
+trisurf(IEN(:,1:3),X(:,1),X(:,2),X(:,3));
+hold on;
+scatter3(X(:,1),X(:,2),X(:,3));
+hold off;
 
 %****************** Boundary Condition and Meta Arrays *******************%
 
 % Need to know the Global DOF number that has to be constrained.
 
-% Boundary condition specified with help of global node number and the
-% local dof number at that node. So local dof at that node goes from 1 to
-% dofpernode. In the following array, first column is global node number,
-% second column is local dof number, third column is the prescribed value.
-BC_node_localDOF = [1, 1, 0; 1, 2, 0; 1, 3, 0];
+BC = cell(1,3);
+BC{1,1} = [0,0,1; 0,0,1;0,0,1];
+BC{1,2} = [1;2;3];
+BC{1,3} = [0;0;0];
 
-% Calculate global DOF number using global node number and local dof
-% number.
-
-a = BC_node_localDOF(:,1);
-i = BC_node_localDOF(:,2); % The local DOF number at the global node
-
+prescribedDOF = getBCmatrix(BC,X);
 
 dofPerNode = 3;
-% Convert the BC array in terms of the global DOF number for convenience.
-prescribedDOF = [dofPerNode*(a-1)+i, BC_node_localDOF(:,3)];
-
-
 ID = zeros(numNodes*dofPerNode,2);
 ID(:,1) = 1:numNodes*dofPerNode;
 
@@ -72,7 +63,7 @@ f = [0;0;1];
 quadOrder = 1;
 
 % Thickness of the membrane
-H = 1;
+H = ones(size(IEN,1),1);
 
 % Elastic constants
 lambda = 5*10^8;
@@ -80,22 +71,29 @@ mu = 1.5*10^6;
 
 % Set the initial guess for displacement
 rng(0);
-u = 0.001*rand(size(X,1),size(X,2));
-%u = zeros(size(X,1),size(X,2)) % Uncomment for zero deformation case
+u = 0.001*rand(size(X));
+%u = zeros(size(X)); % Uncomment for zero deformation case
 
-% Using linear indexing as the global node number is same as linear index
-u(prescribedDOF(:,1)) = prescribedDOF(:,2);
+% Apply boundary condition u_z = 0 on the nodes on sides of the square.
+rowCol = [ceil(prescribedDOF(:,1)/3),mod(prescribedDOF(:,1),3)];
+rowCol(rowCol==0) = 3;
+for i=1:size(rowCol,1)
+    u(rowCol(i,1),rowCol(i,2)) = prescribedDOF(i,2);
+end
 
-X = reshape(X,[dofPerNode*numNodes,1]);
-u = reshape(u,[dofPerNode*numNodes,1]);
+X = reshape(X.',[dofPerNode*numNodes,1]);
+u = reshape(u.',[dofPerNode*numNodes,1]);
+
+% Thickness stretch
+L  = ones(size(IEN,1),1);
 
 x = X + u;
 
 % The exact values
-[W_exact,r_exact,K_exact] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,...
-    IEN,ID);
+[W_exact,r_exact,K_exact,~] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,...
+    mu,IEN,ID,L);
 
-h = norm(x)*logspace(-7,-2);
+h = norm(x)*logspace(-7,-2,10);
 errR = zeros(1,length(h));
 
 % We will use the fact that
@@ -103,9 +101,9 @@ for z=1:length(h)
     r_approx = zeros(numel(unknownDOFs),1);
     for i=1:numel(unknownDOFs)
         x(unknownDOFs(i)) = x(unknownDOFs(i)) + h(z);
-        [Wp,~,~] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,IEN,ID);
+        [Wp,~,~,~] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,IEN,ID,L);
         x(unknownDOFs(i)) = x(unknownDOFs(i)) - 2*h(z);
-        [Wm,~,~] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,IEN,ID);
+        [Wm,~,~,~] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,IEN,ID,L);
         x(unknownDOFs(i)) = x(unknownDOFs(i)) + h(z);
         r_approx(i) = (Wp - Wm)/(2*h(z));
     end
@@ -113,7 +111,7 @@ for z=1:length(h)
     %errR(z) = max(max(abs(r_exact-r_approx)));
 end
 
-slope1 = (log(errR(50))-log(errR(45)))/(log(h(50))-log(h(45)));
+slope1 = (log(errR(9))-log(errR(7)))/(log(h(9))-log(h(7)));
 fprintf('Slope for error in f_internal: %17.16f\n',slope1);
 
 errK = zeros(1,length(h));
@@ -122,11 +120,11 @@ for z=1:length(h)
     for m=1:numel(unknownDOFs)
         for n=1:numel(unknownDOFs)      
             x(unknownDOFs(n)) = x(unknownDOFs(n)) + h(z);
-            [~,rp,~] = assemblyT3Lin(X,x,H,f,quadOrder,...
-                lambda,mu,IEN,ID);
+            [~,rp,~,~] = assemblyT6Quad(X,x,H,f,quadOrder,...
+                lambda,mu,IEN,ID,L);
             x(unknownDOFs(n)) = x(unknownDOFs(n)) - 2*h(z);
-            [~,rm,~] = assemblyT3Lin(X,x,H,f,quadOrder,...
-                lambda,mu,IEN,ID);
+            [~,rm,~,~] = assemblyT6Quad(X,x,H,f,quadOrder,...
+                lambda,mu,IEN,ID,L);
             x(unknownDOFs(n)) = x(unknownDOFs(n)) + h(z);
             K_approx(m,n) = (rp(m) - rm(m))/(2*h(z));
         end
@@ -140,7 +138,7 @@ loglog(h,errR,h,errK);
 xlabel('log(h)');
 ylabel('log(error)')
 legend('Log of error in f_{int}','Log of error in K_{iakb}');
-slope2 = (log(errK(50))-log(errK(45)))/(log(h(50))-log(h(45)));
+slope2 = (log(errK(9))-log(errK(7)))/(log(h(9))-log(h(7)));
 fprintf('Slope for error in K: %17.16f\n',slope2);
 
 toc;

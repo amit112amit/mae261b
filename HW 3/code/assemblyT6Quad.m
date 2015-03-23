@@ -1,6 +1,6 @@
-function [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,IEN,...
+function [W,r,kiakb,L] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,IEN,...
     ID,L)
-%AssemblyT3Lin Performs assembly and returns potential energy, residual
+%AssemblyT6Quad Performs assembly and returns potential energy, residual
 %force and corresponding stiffness.
 % IEN is the connectivity matrix of the mesh
 % ID gives the global eqn number for every global DOF
@@ -42,8 +42,7 @@ for i=1:numEle
     xele = x(eleGlobalDOF);
     uele = xele - Xele; % displacement    
     
-    fprintf('\nassemblyT3Lin(): Element num -> %d\n',i);
-    [W_ele_int,fi_ele,fe_ele,K_ele,L(i)] = T3MembraneEle(Xele,xele,H(i),...
+    [W_ele_int,fi_ele,fe_ele,K_ele,L(i)] = T6MembraneEle(Xele,xele,H(i),...
         f,quadOrder,lambda,mu,L(i));    
     
     % Including the energy contribution from constrained DOFs too.

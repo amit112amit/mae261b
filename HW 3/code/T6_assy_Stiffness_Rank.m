@@ -24,35 +24,28 @@ numNodes = numel(mesh_x);
 
 % The reference configuration
 X = [reshape(mesh_x,numNodes,1), reshape(mesh_y,numNodes,1),...
-    reshape(mesh_z,numNodes,1)].';
+    reshape(mesh_z,numNodes,1)];
 
-trisurf(IEN,X(1,:),X(2,:),X(3,:));
+[IEN,X] = convertToT6Mesh(IEN,X);
+numNodes = size(X,1);
 
+trisurf(IEN(:,1:3),X(:,1),X(:,2),X(:,3));
+hold on;
+scatter3(X(:,1),X(:,2),X(:,3));
+hold off;
 
 %****************** Boundary Condition and Meta Arrays *******************%
 
 % Need to know the Global DOF number that has to be constrained.
 
-% Boundary condition specified with help of global node number and the
-% local dof number at that node. So local dof at that node goes from 1 to
-% dofpernode. In the following array, first column is global node number,
-% second column is local dof number, third column is the prescribed value.
+BC = cell(1,3);
+BC{1,1} = [0,0,1; 0,0,1;0,0,1];
+BC{1,2} = [1;2;3];
+BC{1,3} = [0;0;0];
 
-BC_node_localDOF = [1, 1, 0; 1, 2, 0; 1, 3, 0];
-%BC_node_localDOF = [1,1,0;1,2,0;2,1,0;2,2,0;3,1,0;3,2,0;];
-%BC_node_localDOF = [];
-
-% Calculate global DOF number using global node number and local dof
-% number.
-
-a = BC_node_localDOF(:,1);
-i = BC_node_localDOF(:,2); % The local DOF number at the global node
-
+prescribedDOF = getBCmatrix(BC,X);
 
 dofPerNode = 3;
-% Convert the BC array in terms of the global DOF number for convenience.
-prescribedDOF = [dofPerNode*(a-1)+i, BC_node_localDOF(:,3)];
-%prescribedDOF = [];
 
 ID = zeros(numNodes*dofPerNode,2);
 ID(:,1) = 1:numNodes*dofPerNode;
@@ -72,10 +65,10 @@ end
 f = [0;0;0];
 
 % Quadrature order
-quadOrder = 1;
+quadOrder = 2;
 
 % Thickness of the membrane
-H = 1;
+H = ones(size(IEN,1),1);
 
 % Elastic constants
 lambda = 5*10^8;
@@ -84,28 +77,34 @@ mu = 1.5*10^6;
 % Set the initial guess for displacement
 rng(0);
 
-u = zeros(size(X,1),size(X,2)); % Uncomment for zero deformation case
-u(3,:) = 0.001*rand(1,size(X,2));% To avoid zero stiffness in z-direction
+u = zeros(size(X)); % Uncomment for zero deformation case
+u(:,3) = 0.001*rand(size(X,1),1);% To avoid zero stiffness in z-direction
 
-% Using linear indexing as the global node number is same as linear index
-%u(prescribedDOF(:,1)) = prescribedDOF(:,2);
+% Apply boundary condition u_z = 0 on the nodes on sides of the square.
+rowCol = [ceil(prescribedDOF(:,1)/3),mod(prescribedDOF(:,1),3)];
+rowCol(rowCol==0) = 3;
+for i=1:size(rowCol,1)
+    u(rowCol(i,1),rowCol(i,2)) = prescribedDOF(i,2);
+end
 
-X = reshape(X,[dofPerNode*numNodes,1]);
-u = reshape(u,[dofPerNode*numNodes,1]);
+X = reshape(X.',[dofPerNode*numNodes,1]);
+u = reshape(u.',[dofPerNode*numNodes,1]);
+
+% Thickness stretch
+L  = ones(size(IEN,1),1);
 
 x = X + u;
 
-%
-[~,~,K1] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,...
-    IEN,ID);
+[~,~,K1,~] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,...
+    IEN,ID,L);
 r1 = findStiffnessRank(K1);
 fprintf('Zero deformation Stiffness Matrix rank = %d\n\n',r1);
 
 u = 0.001*rand(size(X,1),size(X,2));
 x = X + u;
 
-[~,~,K2] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,...
-    IEN,ID);
+[~,~,K2,~] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,...
+    IEN,ID,L);
 
 r2 = findStiffnessRank(K2);
 fprintf('Finite deformation Stiffness Matrix rank = %d\n',r2);
