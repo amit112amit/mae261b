@@ -50,7 +50,7 @@ A_alpha_sup = G_dual(:,1:2);
 
 
 if(isPlaneStress)
-    maxIter = 100;
+    maxIter = 20;
     tol = lame1*10^(-16);
     
     while(maxIter > 0)
@@ -63,21 +63,40 @@ if(isPlaneStress)
         T = a_3'*(PKstress*A3);
         
         if(abs(T) < tol)
-            %fprintf('Tolerance met!\n');
+            fprintf('Tolerance met!\n');
             break;
         end
         
+        % Calculate component of C_iJkL in the curvilinear frame
+        C_3333 = 0;
+        for I=1:dim
+            for J=1:dim
+                for K=1:dim
+                    for L=1:dim
+                        C_3333 = C_3333 + a_3(I)*A3(J)*C_iJkL(I,J,K,L)*...
+                            a_3(K)*A3(L);
+                    end
+                end
+            end
+        end
+        
+        
         % The Newton iteration update
-        dLambda = -T/C_iJkL(3,3,3,3);
+        dLambda = -T/C_3333;
+        
         if(abs(dLambda) < eps)
-            %fprintf('Newton update is too small!\n');
+            fprintf('Newton update is too small!\n');
             break;
         end
         Lambda = Lambda + dLambda;
+        
+        % Don't let Lambda become negative!!!
+        Lambda = max(Lambda,1.0e-4);
+        
         maxIter = maxIter - 1;
     end
-%     fprintf('calcAllCs(): T reduced to %17.16f after %d iterations.\n',...
-%         T,100 - maxIter);
+    fprintf('calcAllCs(): T reduced to %17.16f after %d iterations.\n',...
+        T,20 - maxIter);
 else
     F = a_alpha_sub(:,1)*(A_alpha_sup(:,1)).' +...
         a_alpha_sub(:,2)*(A_alpha_sup(:,2)).' + Lambda*a_3*A3.';

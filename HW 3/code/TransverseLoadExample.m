@@ -11,8 +11,8 @@ useT6QuadEle = false;
 % The dimensions for the square membrane in metres.
 xlim = 0.1;
 ylim = 0.1;
-x_incr = 0.02;
-y_incr = 0.02;
+x_incr = 0.05;
+y_incr = 0.05;
 
 x_val = 0:x_incr:xlim;
 y_val = 0:y_incr:ylim;
@@ -38,10 +38,8 @@ else
     quadOrder = 1;
 end
 
-trisurf(IEN(:,1:3),X(:,1),X(:,2),X(:,3));
-hold on;
-scatter3(X(:,1),X(:,2),X(:,3));
-hold off;
+isScatterOn = true;
+plotMesh(IEN(:,1:3),reshape(X.',[],1),'initialMesh.eps',isScatterOn);
 
 %****************** Boundary Condition and Meta Arrays *******************%
 
@@ -69,7 +67,7 @@ temp = temp(sum(difference,2)~=0,:);
 temp = repmat(temp,[3,1]); % The points to be constrained
 BC{1,1} = temp;
 BC{1,2} = [ones(size(temp,1)/3,1);2*ones(size(temp,1)/3,1);...
-    3*ones(size(temp,1)/3,1)];% The direction to be constrained (z)    
+    3*ones(size(temp,1)/3,1)];% The direction to be constrained (z)
 BC{1,3} = zeros(size(BC{1,1},1),1); % Constraint value (0)
 
 prescribedDOF = getBCmatrix(BC,X);
@@ -98,7 +96,7 @@ f_steps = f_max/deltaF;
 H = 0.001*ones(size(IEN,1),1);
 
 % The thickness stretch
-L = 0.5*ones(size(IEN,1),1);
+L = ones(size(IEN,1),1);
 L_orig = L;
 
 % Elastic constants in N/m^2
@@ -182,13 +180,20 @@ end
 toc;
 
 %************************** Plot the results *****************************%
-figure(1)
+f = figure('visible','off');
 plot(f_inc,u_max);
 xlabel('Force (N)');
 ylabel('Maximum deflection (m)');
 title('Force vs. Deflection Curve');
+print(f,'forceDeflection.eps','-depsc');
+savefig(f,'forceDeflection.fig');
 
-dim = 3;
-figure(2);
-x = reshape(x,[dim,numNodes]);
-surf(xtemp,ytemp,reshape(x(3,:),size(xtemp,1),[]));
+toSaveData = [f_inc,u_max];
+dlmwrite('forceDeflection.dat',toSaveData,'delimiter','\t',...
+    'precision',17);
+
+if(useT6QuadEle)
+    isScatterOn = false;
+end
+
+plotMesh(IEN(:,1:3),x,'deformedMesh.eps',isScatterOn);
