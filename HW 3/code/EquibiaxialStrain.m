@@ -31,6 +31,10 @@ X = [reshape(mesh_x,numNodes,1), reshape(mesh_y,numNodes,1),...
 
 dofPerNode = 3;
 
+% The range of displacement boundary conditions to apply
+factor = (-0.25:0.05:4.5).';
+u_BC = (factor)*xlim;
+
 constrainedSide1 = X(X(:,2)== 0,:);
 constrainedSide2 = X(X(:,1)== xlim,:);
 constrainedSide3 = X(X(:,2)== ylim,:);
@@ -39,19 +43,24 @@ constrainedSide4 = X(X(:,1)== 0,:);
 BC = cell(1,3);
 BC{1,1} = [constrainedSide1;constrainedSide2;constrainedSide3;...
     constrainedSide4;X];
-
 BC{1,2} = [2*ones(size(constrainedSide1,1),1);...
     ones(size(constrainedSide2,1),1);2*ones(size(constrainedSide3,1),1);...
     ones(size(constrainedSide4,1),1);3*ones(size(X,1),1)];
+BC{1,3} = zeros(size(BC{1,2},1),1); % Dummy Boundary Condition values
 
-factor = (-0.25:0.05:4.5).';
+prescribedDOF = getBCmatrix(BC,X);
 
-u_BC = (factor)*xlim;
-meanF11 = zeros(size(u_BC));
-meanP11 = zeros(size(u_BC));
-meanP22 = zeros(size(u_BC));
-
-X_orig = X; % Back up original reference config
+% Generate ID matrix
+ID = zeros(numNodes*dofPerNode,2);
+ID(:,1) = 1:numNodes*dofPerNode;
+unknownDOFs = (1:numNodes*dofPerNode).';
+unknownDOFs(prescribedDOF(:,1)) = [];
+constrainedDOFs = prescribedDOF(:,1);
+globalEqNum = 1;
+for i = 1:numel(unknownDOFs)
+    ID(unknownDOFs(i),2) = globalEqNum;
+    globalEqNum = globalEqNum + 1;
+end
 
 % External transverse load
 f = [0;0;0];
@@ -60,11 +69,11 @@ f = [0;0;0];
 quadOrder = 1;
 
 % Thickness of the membrane
-H = 0.1*xlim*ones(size(IEN,1),1);
-H_orig = H;
+H = 0.01*xlim*ones(size(IEN,1),1);
 
 % The thickness stretch
 L = ones(size(IEN,1),1);
+L_orig = L;
 
 % Elastic constants
 lambda = 5*10^8;
@@ -75,53 +84,36 @@ rng(0);
 
 u_steps = ceil(abs(u_BC)/0.3) + 5;
 
+% Set tolerance for Newton Iteration
+tol = norm(mu)*norm(H)*10^(-12);
+
+meanF11 = zeros(size(u_BC));
+meanP11 = zeros(size(u_BC));
+meanP22 = zeros(size(u_BC));
+
+X_temp = reshape(X.',[dofPerNode*numNodes,1]);
 for q=1:size(u_BC,1)
-    
-    % Need to reset X to X_orig
-    X = X_orig;
-    H = H_orig;
-    
-    BC{1,3} = [-1*u_BC(q)*ones(size(constrainedSide1,1),1);...
+    % Initial guess for deformed config without BCs is the reference config
+    x = X_temp;
+    L = L_orig;
+    % Actual Boundary Condition values
+    prescribedDOF(:,2)= [-1*u_BC(q)*ones(size(constrainedSide1,1),1);...
         u_BC(q)*ones(size(constrainedSide2,1),1);...
         u_BC(q)*ones(size(constrainedSide3,1),1);...
-        -1*u_BC(q)*ones(size(constrainedSide4,1),1);zeros(size(X,1),1)];
-    
-    prescribedDOF = getBCmatrix(BC,X);
-    
-    % Generate ID matrix
-    ID = zeros(numNodes*dofPerNode,2);
-    ID(:,1) = 1:numNodes*dofPerNode;
-    
-    unknownDOFs = (1:numNodes*dofPerNode).';
-    unknownDOFs(prescribedDOF(:,1)) = [];
-    
-    globalEqNum = 1;
-    for i = 1:numel(unknownDOFs)
-        ID(unknownDOFs(i),2) = globalEqNum;
-        globalEqNum = globalEqNum + 1;
-    end
+        -1*u_BC(q)*ones(size(constrainedSide4,1),1);zeros(size(X,1),1)];    
     
     %****************************** Assembly *****************************%
-    index = [ceil(prescribedDOF(:,1)/3),mod(prescribedDOF(:,1),3)];
-    index(index==0) = 3;
-    u = zeros(numNodes,dofPerNode);
-    for i=1:size(index,1)
-        u(index(i,1),index(i,2)) = prescribedDOF(i,2);
-    end
     
-    X = reshape(X.',[dofPerNode*numNodes,1]);
-    u_total = reshape(u.',[dofPerNode*numNodes,1]);
-    
-    u = u_total/u_steps(q);
-    
-    tol = norm(mu)*norm(H)*10^(-12);
+    u_incr = prescribedDOF(:,2)/u_steps(q);
     
     for i=1:u_steps(q)
-        x = X + u;
-        maxIter = 100;
+        % Apply BCs to the deformed config
+        x(constrainedDOFs) = x(constrainedDOFs) + u_incr;
+        
         % Newton Iterations
+        maxIter = 100;
         while(1)
-            [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,...
+            [W,r,kiakb,L] = assemblyT3Lin(X_temp,x,H,f,quadOrder,lambda,...
                 mu,IEN,ID,L);
             kiakb = sparse(kiakb);
             u_Newton = -kiakb\r;
@@ -143,8 +135,6 @@ for q=1:size(u_BC,1)
         end
         fprintf(['Iterations: %d norm(r): %17.16f norm(u_Newton):',...
             '%17.16f\n'],100-maxIter,norm(r),norm(u_Newton));
-        X = x;
-        H = H.*L;
     end
     
     %***************** Uniformity of Deformation Gradient ****************%
@@ -157,7 +147,7 @@ for q=1:size(u_BC,1)
     
     tmp2 = (1:dofPerNode).'; % We use it to calculate global DOF number
     tmp2 = repmat(tmp2,[size(IEN,2),1]);
-    Lambda = H./H_orig;
+    Lambda = L;
     for z=1:size(IEN,1)
         eleNodeNum = IEN(z,:);
         % Fancy stuff to calculate globalDOF numbers for the global node
@@ -166,8 +156,8 @@ for q=1:size(u_BC,1)
         tmp1 = reshape(tmp1,[numel(tmp1),1]);
         eleGlobalDOF = dofPerNode*(tmp1-1) + tmp2;
         
-        temp = X_orig.';        
-        X_ele = temp(eleGlobalDOF);        
+        temp = X.';
+        X_ele = temp(eleGlobalDOF);
         x_ele = x(eleGlobalDOF);
         [F(:,:,z),P(:,:,z)] = calcFandP(x_ele,X_ele,Lambda(z),...
             size(IEN,2),quadOrder,lambda,mu);

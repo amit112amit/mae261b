@@ -11,8 +11,8 @@ useT6QuadEle = false;
 % The dimensions for the square membrane in metres.
 xlim = 0.1;
 ylim = 0.1;
-x_incr = 0.01;
-y_incr = 0.01;
+x_incr = 0.02;
+y_incr = 0.02;
 
 x_val = 0:x_incr:xlim;
 y_val = 0:y_incr:ylim;
@@ -148,10 +148,10 @@ for i=1:f_steps
     while(1)
         if(useT6QuadEle)
             [W,r,kiakb,L] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,...
-                IEN,ID,L_orig);
+                IEN,ID,L);
         else
             [W,r,kiakb,L] = assemblyT3Lin(X,x,H,f,quadOrder,lambda,mu,...
-                IEN,ID,L_orig);
+                IEN,ID,L);
         end
         %kiakb = sparse(kiakb);
         u_Newton = -kiakb\r;

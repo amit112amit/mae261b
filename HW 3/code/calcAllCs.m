@@ -76,8 +76,8 @@ if(isPlaneStress)
         Lambda = Lambda + dLambda;
         maxIter = maxIter - 1;
     end
-    fprintf('calcAllCs(): T reduced to %17.16f after %d iterations.\n',...
-        T,100 - maxIter);
+%     fprintf('calcAllCs(): T reduced to %17.16f after %d iterations.\n',...
+%         T,100 - maxIter);
 else
     F = a_alpha_sub(:,1)*(A_alpha_sup(:,1)).' +...
         a_alpha_sub(:,2)*(A_alpha_sup(:,2)).' + Lambda*a_3*A3.';

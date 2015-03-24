@@ -42,7 +42,7 @@ for i=1:numEle
     xele = x(eleGlobalDOF);
     uele = xele - Xele; % displacement    
     
-    fprintf('\nassemblyT3Lin(): Element num -> %d\n',i);
+%     fprintf('\nassemblyT3Lin(): Element num -> %d\n',i);
     [W_ele_int,fi_ele,fe_ele,K_ele,L(i)] = T3MembraneEle(Xele,xele,H(i),...
         f,quadOrder,lambda,mu,L(i));    
     

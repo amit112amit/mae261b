@@ -14,7 +14,7 @@ numNodes = 3;
 x = reshape(x,[dim,numNodes]);
 X = reshape(X,[dim,numNodes]);
 
-isPlaneStress = false;
+isPlaneStress = true;
 
 % Get the quadrature points and weights
 [points,weights] = TriGaussQuad(quadOrder);
