@@ -8,6 +8,7 @@ function [W,r,kiakb,L] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,IEN,...
 % H should be an array for thickness of all elements ordered as per element
 % number
 % L is an array of thickness stretches for each element
+% f is transverse load for each element of dimensions numEle-by-3
 %
 % W is the potential energy
 % r is the residual of the fint - fext
@@ -43,7 +44,7 @@ for i=1:numEle
     uele = xele - Xele; % displacement    
     
     [W_ele_int,fi_ele,fe_ele,K_ele,L(i)] = T6MembraneEle(Xele,xele,H(i),...
-        f,quadOrder,lambda,mu,L(i));    
+        f(i,:).',quadOrder,lambda,mu,L(i));    
     
     % Including the energy contribution from constrained DOFs too.
     W_ele_ext = fe_ele.'*uele;    

@@ -11,8 +11,8 @@ useT6QuadEle = false;
 % The dimensions for the square membrane in metres.
 xlim = 0.1;
 ylim = 0.1;
-x_incr = 0.05;
-y_incr = 0.05;
+x_incr = 0.005;
+y_incr = 0.005;
 
 x_val = 0:x_incr:xlim;
 y_val = 0:y_incr:ylim;
@@ -38,7 +38,7 @@ else
     quadOrder = 1;
 end
 
-isScatterOn = true;
+isScatterOn = false;
 plotMesh(IEN(:,1:3),reshape(X.',[],1),'initialMesh.eps',isScatterOn);
 
 %****************** Boundary Condition and Meta Arrays *******************%
@@ -105,10 +105,6 @@ mu = 4*10^4;
 
 %****************************** Assembly *****************************%
 
-% Back-up original configuration
-H_orig = H;
-X_orig = X;
-
 % Calculate initial guess for displacement in z-direction.
 % We are taking advantage of features peculiar to mesh geometry when using
 % reshape()
@@ -139,7 +135,7 @@ u_max = zeros(f_steps,1);
 f_inc = zeros(f_steps,1);
 for i=1:f_steps
     % Increment the force
-    f = [0;0;i*deltaF];
+    f = repmat([0,0,i*deltaF],size(IEN,1),1);
     
     % Newton Iterations
     maxIter = 100;
@@ -180,13 +176,13 @@ end
 toc;
 
 %************************** Plot the results *****************************%
-f = figure('visible','off');
+fig = figure('visible','off');
 plot(f_inc,u_max);
 xlabel('Force (N)');
 ylabel('Maximum deflection (m)');
 title('Force vs. Deflection Curve');
-print(f,'forceDeflection.eps','-depsc');
-savefig(f,'forceDeflection.fig');
+print(fig,'forceDeflection.eps','-depsc');
+savefig(fig,'forceDeflection.fig');
 
 toSaveData = [f_inc,u_max];
 dlmwrite('forceDeflection.dat',toSaveData,'delimiter','\t',...
@@ -196,4 +192,5 @@ if(useT6QuadEle)
     isScatterOn = false;
 end
 
-plotMesh(IEN(:,1:3),x,'deformedMesh.eps',isScatterOn);
+isVisible = false;
+plotMesh(IEN(:,1:3),x,'deformedMesh.eps',isScatterOn,isVisible);

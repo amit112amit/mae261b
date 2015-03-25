@@ -62,7 +62,7 @@ end
 %******************************** Assembly *******************************%
 
 % External transverse load
-f = [0;0;0];
+f = repmat([0,0,0],size(IEN,1),1);
 
 % Quadrature order
 quadOrder = 2;

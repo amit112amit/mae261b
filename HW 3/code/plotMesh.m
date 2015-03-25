@@ -1,4 +1,4 @@
-function  plotMesh(IEN,x,fileName,isScatterOn)
+function  plotMesh(IEN,x,fileName,isScatterOn,isVisible)
 %plotMesh Plots the mesh and prints it to file in eps format
 %   IEN is the connectivity matrix
 %   x is a column vector containing co-ordinates of all the nodes in the
@@ -9,7 +9,11 @@ function  plotMesh(IEN,x,fileName,isScatterOn)
 
 dim = 3;
 x = reshape(x,dim,[]);
-f = figure('visible','off');
+if(~isVisible)
+    f = figure('visible','off');
+else
+    f = figure;
+end
 trisurf(IEN(:,1:3),x(1,:),x(2,:),x(3,:));
 
 if(isScatterOn)
@@ -18,18 +22,19 @@ if(isScatterOn)
     hold off;
 end
 
-% Save the color eps file
-print(f,fileName,'-depsc');
-
-% Save the figure file
-idx = strfind(fileName,'.');
-if(isempty(idx))
-    figFileName = strcat(fileName,'.fig');
-else
-    figFileName = strcat(fileName(1:idx-1),'.fig');
+if(~isempty(fileName))
+    % Save the color eps file
+    print(f,fileName,'-depsc');
+    
+    % Save the figure file
+    idx = strfind(fileName,'.');
+    if(isempty(idx))
+        figFileName = strcat(fileName,'.fig');
+    else
+        figFileName = strcat(fileName(1:idx-1),'.fig');
+    end
+    savefig(f,figFileName);
 end
-
-savefig(f,figFileName);
 
 end
 

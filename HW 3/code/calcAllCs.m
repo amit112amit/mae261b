@@ -1,5 +1,5 @@
 function [strEngDen,PKstress,Ctilda,otherData] = calcAllCs(a_alpha_sub,...
-    A_alpha_sub,thicknessStretch,H,lame1,mu,isPlaneStress)
+    A_alpha_sub,thicknessStretch,H,lame1,mu,isPlaneStress) %#codegen
 %CALCALLCS Planes stress neo-Hookean for curvilinear co-ordinates
 %   a_alpha is tangent basis vector for mid-plane in spatial configuration
 %   A_alpha is dual basis vector for mid-plane in reference configuration
