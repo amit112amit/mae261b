@@ -1,4 +1,4 @@
-%% Consistency test for T6MembraeEle
+%% Consistency test for T6MembraneEle
 
 close all;clear;clc;
 tic;
@@ -29,7 +29,7 @@ fi = reshape(fi,[dim,numNodes]);
 K = reshape(K,[dim,numNodes,dim,numNodes]);
 
 %h = rand(1,1)*10^-5;
-h = logspace(-6,-3,10);
+h = logspace(-7,-3,15);
 errF = zeros(1,length(h));
 for z=1:length(h)
     fi_approx = zeros(dim,numNodes);
@@ -57,7 +57,7 @@ slope1 = (log(errF(length(h)-1))-log(errF(length(h)-4)))/...
     (log(h(length(h)-1))-log(h(length(h)-4)));
 fprintf('Slope for error in f_internal: %17.16f\n',slope1);
 
-h = logspace(-4,-2,10);
+h = logspace(-7,-2,15);
 errK = zeros(1,length(h));
 for z=1:length(h)
     K_approx = zeros(dim,numNodes,dim,numNodes);

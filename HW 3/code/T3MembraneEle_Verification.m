@@ -1,4 +1,4 @@
-%% Consistency test for T3MembraeEle
+%% Consistency test for T3MembraneEle
 
 close all;clear;clc;
 
