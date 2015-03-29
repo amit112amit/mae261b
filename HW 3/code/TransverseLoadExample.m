@@ -4,15 +4,15 @@ clear; close all; clc;
 tic;
 
 % Flag to control which element to use
-useT6QuadEle = false;
+useT6QuadEle = true;
 
 %**************************** Generate Mesh ******************************%
 
 % The dimensions for the square membrane in metres.
 xlim = 0.1;
 ylim = 0.1;
-x_incr = 0.02;
-y_incr = 0.02;
+x_incr = 0.01;
+y_incr = 0.01;
 
 x_val = 0:x_incr:xlim;
 y_val = 0:y_incr:ylim;
@@ -38,10 +38,11 @@ else
     quadOrder = 1;
 end
 
-trisurf(IEN(:,1:3),X(:,1),X(:,2),X(:,3));
-hold on;
-scatter3(X(:,1),X(:,2),X(:,3));
-hold off;
+isScatterOn = false;
+isVisible = false;
+fig = figure(1);
+plotMesh(fig,IEN(:,1:3),reshape(X.',[],1),'initialMesh.eps',isScatterOn,...
+    isVisible);
 
 %****************** Boundary Condition and Meta Arrays *******************%
 
@@ -69,7 +70,7 @@ temp = temp(sum(difference,2)~=0,:);
 temp = repmat(temp,[3,1]); % The points to be constrained
 BC{1,1} = temp;
 BC{1,2} = [ones(size(temp,1)/3,1);2*ones(size(temp,1)/3,1);...
-    3*ones(size(temp,1)/3,1)];% The direction to be constrained (z)    
+    3*ones(size(temp,1)/3,1)];% The direction to be constrained (z)
 BC{1,3} = zeros(size(BC{1,1},1),1); % Constraint value (0)
 
 prescribedDOF = getBCmatrix(BC,X);
@@ -98,7 +99,7 @@ f_steps = f_max/deltaF;
 H = 0.001*ones(size(IEN,1),1);
 
 % The thickness stretch
-L = 0.5*ones(size(IEN,1),1);
+L = ones(size(IEN,1),1);
 L_orig = L;
 
 % Elastic constants in N/m^2
@@ -106,10 +107,6 @@ lambda = 4*10^6;
 mu = 4*10^4;
 
 %****************************** Assembly *****************************%
-
-% Back-up original configuration
-H_orig = H;
-X_orig = X;
 
 % Calculate initial guess for displacement in z-direction.
 % We are taking advantage of features peculiar to mesh geometry when using
@@ -140,12 +137,14 @@ tol = norm(mu)*norm(H)*10^(-12);
 u_max = zeros(f_steps,1);
 f_inc = zeros(f_steps,1);
 for i=1:f_steps
+    fprintf('Force step: %d\n',i);
     % Increment the force
-    f = [0;0;i*deltaF];
+    f = repmat([0,0,i*deltaF],size(IEN,1),1);
     
     % Newton Iterations
-    maxIter = 100;
+    maxIter = 20;
     while(1)
+        fprintf('Equilibrium iteration: %d\n',21-maxIter);
         if(useT6QuadEle)
             [W,r,kiakb,L] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,...
                 IEN,ID,L);
@@ -156,39 +155,51 @@ for i=1:f_steps
         %kiakb = sparse(kiakb);
         u_Newton = -kiakb\r;
         if(norm(r) < tol)
-            fprintf('Converged. Norm(r) : %17.16f\n',norm(r));
+            %fprintf('Converged. Norm(r) : %17.16f\n',norm(r));
             break;
         end
         if(norm(u_Newton) < eps*10)
-            fprintf('Newton update is very small: %17.16f\n',...
-                norm(u_Newton));
+            %fprintf('Newton update is very small: %17.16f\n',...
+            %    norm(u_Newton));
             break;
         end
         if(maxIter < 0)
-            fprintf('Maximum iterations exceeded.\n');
+            %fprintf('Maximum iterations exceeded.\n');
             break;
         end
         maxIter = maxIter - 1;
         x(unknownDOFs) = x(unknownDOFs) + u_Newton;
     end
+    if(maxIter <= 0 && norm(r) > 1000*tol)
+        error('Equilibrium Newton iterations did not converge.');
+    end
     fprintf(['Iterations: %d norm(r): %17.16f norm(u_Newton): ',...
-        '%17.16f\n'],100-maxIter,norm(r),norm(u_Newton));
+        '%17.16f\n'],20-maxIter,norm(r),norm(u_Newton));
     
     % Caculate displacement
     u = x - X;
     u_max(i) = max(abs(u)); % Maximum deflection
-    f_inc(i) = norm(f);
+    f_inc(i) = norm(f(1,:));
 end
 toc;
 
 %************************** Plot the results *****************************%
-figure(1)
+fig = figure('visible','off');
 plot(f_inc,u_max);
-xlabel('Force (N)');
+xlabel('Force (N/m^2)');
 ylabel('Maximum deflection (m)');
 title('Force vs. Deflection Curve');
+print(fig,'forceDeflection.eps','-depsc');
+savefig(fig,'forceDeflection.fig');
 
-dim = 3;
-figure(2);
-x = reshape(x,[dim,numNodes]);
-surf(xtemp,ytemp,reshape(x(3,:),size(xtemp,1),[]));
+toSaveData = [f_inc,u_max];
+dlmwrite('forceDeflection.dat',toSaveData,'delimiter','\t',...
+    'precision',17);
+
+if(useT6QuadEle)
+    isScatterOn = false;
+end
+
+fig = figure;
+isVisible = false;
+plotMesh(fig,IEN(:,1:3),x,'deformedMesh.eps',isScatterOn,isVisible);
