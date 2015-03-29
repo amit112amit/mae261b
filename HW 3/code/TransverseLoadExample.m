@@ -4,15 +4,15 @@ clear; close all; clc;
 tic;
 
 % Flag to control which element to use
-useT6QuadEle = false;
+useT6QuadEle = true;
 
 %**************************** Generate Mesh ******************************%
 
 % The dimensions for the square membrane in metres.
 xlim = 0.1;
 ylim = 0.1;
-x_incr = 0.005;
-y_incr = 0.005;
+x_incr = 0.01;
+y_incr = 0.01;
 
 x_val = 0:x_incr:xlim;
 y_val = 0:y_incr:ylim;
@@ -39,7 +39,10 @@ else
 end
 
 isScatterOn = false;
-plotMesh(IEN(:,1:3),reshape(X.',[],1),'initialMesh.eps',isScatterOn);
+isVisible = false;
+fig = figure(1);
+plotMesh(fig,IEN(:,1:3),reshape(X.',[],1),'initialMesh.eps',isScatterOn,...
+    isVisible);
 
 %****************** Boundary Condition and Meta Arrays *******************%
 
@@ -134,12 +137,14 @@ tol = norm(mu)*norm(H)*10^(-12);
 u_max = zeros(f_steps,1);
 f_inc = zeros(f_steps,1);
 for i=1:f_steps
+    fprintf('Force step: %d\n',i);
     % Increment the force
     f = repmat([0,0,i*deltaF],size(IEN,1),1);
     
     % Newton Iterations
-    maxIter = 100;
+    maxIter = 20;
     while(1)
+        fprintf('Equilibrium iteration: %d\n',21-maxIter);
         if(useT6QuadEle)
             [W,r,kiakb,L] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,...
                 IEN,ID,L);
@@ -150,35 +155,38 @@ for i=1:f_steps
         %kiakb = sparse(kiakb);
         u_Newton = -kiakb\r;
         if(norm(r) < tol)
-            fprintf('Converged. Norm(r) : %17.16f\n',norm(r));
+            %fprintf('Converged. Norm(r) : %17.16f\n',norm(r));
             break;
         end
         if(norm(u_Newton) < eps*10)
-            fprintf('Newton update is very small: %17.16f\n',...
-                norm(u_Newton));
+            %fprintf('Newton update is very small: %17.16f\n',...
+            %    norm(u_Newton));
             break;
         end
         if(maxIter < 0)
-            fprintf('Maximum iterations exceeded.\n');
+            %fprintf('Maximum iterations exceeded.\n');
             break;
         end
         maxIter = maxIter - 1;
         x(unknownDOFs) = x(unknownDOFs) + u_Newton;
     end
+    if(maxIter <= 0 && norm(r) > 1000*tol)
+        error('Equilibrium Newton iterations did not converge.');
+    end
     fprintf(['Iterations: %d norm(r): %17.16f norm(u_Newton): ',...
-        '%17.16f\n'],100-maxIter,norm(r),norm(u_Newton));
+        '%17.16f\n'],20-maxIter,norm(r),norm(u_Newton));
     
     % Caculate displacement
     u = x - X;
     u_max(i) = max(abs(u)); % Maximum deflection
-    f_inc(i) = norm(f);
+    f_inc(i) = norm(f(1,:));
 end
 toc;
 
 %************************** Plot the results *****************************%
 fig = figure('visible','off');
 plot(f_inc,u_max);
-xlabel('Force (N)');
+xlabel('Force (N/m^2)');
 ylabel('Maximum deflection (m)');
 title('Force vs. Deflection Curve');
 print(fig,'forceDeflection.eps','-depsc');
@@ -192,5 +200,6 @@ if(useT6QuadEle)
     isScatterOn = false;
 end
 
+fig = figure;
 isVisible = false;
-plotMesh(IEN(:,1:3),x,'deformedMesh.eps',isScatterOn,isVisible);
+plotMesh(fig,IEN(:,1:3),x,'deformedMesh.eps',isScatterOn,isVisible);

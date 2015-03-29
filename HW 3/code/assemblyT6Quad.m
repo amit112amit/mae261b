@@ -43,6 +43,7 @@ for i=1:numEle
     xele = x(eleGlobalDOF);
     uele = xele - Xele; % displacement    
     
+    fprintf('Element: %d\n',i);
     [W_ele_int,fi_ele,fe_ele,K_ele,L(i)] = T6MembraneEle(Xele,xele,H(i),...
         f(i,:).',quadOrder,lambda,mu,L(i));    
     

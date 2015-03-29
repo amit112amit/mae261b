@@ -1,5 +1,5 @@
 function [strEngDen,PKstress,Ctilda,otherData] = calcAllCs(a_alpha_sub,...
-    A_alpha_sub,thicknessStretch,H,lame1,mu,isPlaneStress) %#codegen
+    A_alpha_sub,thicknessStretch,H,lame1,mu,isPlaneStress)
 %CALCALLCS Planes stress neo-Hookean for curvilinear co-ordinates
 %   a_alpha is tangent basis vector for mid-plane in spatial configuration
 %   A_alpha is dual basis vector for mid-plane in reference configuration
@@ -50,10 +50,12 @@ A_alpha_sup = G_dual(:,1:2);
 
 
 if(isPlaneStress)
-    maxIter = 20;
-    tol = lame1*10^(-16);
+    maxIter = 100;
+    iterCount = 0;
+    tol = mu*10^(-15);
     
-    while(maxIter > 0)
+    retry = 0;
+    while(iterCount < maxIter)
         % Calculate deformation gradient
         F = a_alpha_sub(:,1)*(A_alpha_sup(:,1)).' +...
             a_alpha_sub(:,2)*(A_alpha_sup(:,2)).' + Lambda*a_3*A3.';
@@ -63,7 +65,7 @@ if(isPlaneStress)
         T = a_3'*(PKstress*A3);
         
         if(abs(T) < tol)
-            fprintf('Tolerance met!\n');
+            %fprintf('Tolerance met!\n');
             break;
         end
         
@@ -85,18 +87,36 @@ if(isPlaneStress)
         dLambda = -T/C_3333;
         
         if(abs(dLambda) < eps)
-            fprintf('Newton update is too small!\n');
+            %fprintf('Newton update is too small!\n');
             break;
         end
         Lambda = Lambda + dLambda;
         
         % Don't let Lambda become negative!!!
-        Lambda = max(Lambda,1.0e-4);
-        
-        maxIter = maxIter - 1;
+        if (Lambda < 0)
+            fprintf('calcAllCs(): Retry %d\n',retry+1);
+            switch retry
+                case 0
+                    Lambda = 0.005;
+                    retry = 1;
+                case 1
+                    Lambda = 0.00005;
+                    retry = 2;
+                case 2
+                    Lambda = 0.00000005;
+                    retry = 3;
+                otherwise
+                    fprintf('Failed after 3 attemtpts! Please debug.\n');
+            end
+        end
+        iterCount = iterCount + 1;
     end
-    fprintf('calcAllCs(): T reduced to %17.16f after %d iterations.\n',...
-        T,20 - maxIter);
+    
+    if(iterCount >= maxIter && abs(T)>100000*tol)
+        fprintf(['**** Plane stress Newton ',...
+            'iterations did not converge. ****\n T = %17.16f',...
+            ' dLambda = %17.16f\n'],T,dLambda);
+    end
 else
     F = a_alpha_sub(:,1)*(A_alpha_sup(:,1)).' +...
         a_alpha_sub(:,2)*(A_alpha_sup(:,2)).' + Lambda*a_3*A3.';
@@ -165,7 +185,7 @@ else
     Ctilda = Cijkl(1:2,1:2,1:2,1:2);
 end
 
-% Calculating the components of Tau
+% Calculating the components of Tau in curvilinear frame
 tauij = zeros(3);
 for i=1:3
     for j=1:3
