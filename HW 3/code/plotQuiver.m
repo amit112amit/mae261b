@@ -4,7 +4,7 @@ function fig = plotQuiver(fig,force,scale,IEN,X)
 %column vectors that need to be reshaped. Force is a numEle-by-3 matrix
 
 ax = fig.CurrentAxes;
-
+view(ax,[-37.5,30]);
 X = reshape(X,3,[]);
 X = X';
 

@@ -52,7 +52,7 @@ A_alpha_sup = G_dual(:,1:2);
 if(isPlaneStress)
     maxIter = 100;
     iterCount = 0;
-    tol = mu*10^(-15);
+    tol = mu*10^(-16);
     
     retry = 0;
     while(iterCount < maxIter)

@@ -112,7 +112,7 @@ for z=1:length(h)
 end
 
 slope1 = (log(errR(9))-log(errR(7)))/(log(h(9))-log(h(7)));
-fprintf('Slope for error in f_internal: %17.16f\n',slope1);
+fprintf('Slope for error in r_{ia}: %17.16f\n',slope1);
 
 errK = zeros(1,length(h));
 for z=1:length(h)
@@ -137,8 +137,9 @@ figure(2);
 loglog(h,errR,h,errK);
 xlabel('log(h)');
 ylabel('log(error)')
-legend('Log of error in f_{int}','Log of error in K_{iakb}');
+legend('Log of error in r_{ia}','Log of error in K_{iakb}');
 slope2 = (log(errK(9))-log(errK(7)))/(log(h(9))-log(h(7)));
 fprintf('Slope for error in K: %17.16f\n',slope2);
+title('Results of Consistenty Test for 6-node Triangular Alement Assembly');
 
 toc;

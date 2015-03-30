@@ -11,8 +11,8 @@ useT6QuadEle = true;
 % The dimensions for the square membrane in metres.
 xlim = 0.1;
 ylim = 0.1;
-x_incr = 0.01;
-y_incr = 0.01;
+x_incr = 0.02;
+y_incr = 0.02;
 
 x_val = 0:x_incr:xlim;
 y_val = 0:y_incr:ylim;
@@ -70,7 +70,7 @@ temp = temp(sum(difference,2)~=0,:);
 temp = repmat(temp,[3,1]); % The points to be constrained
 BC{1,1} = temp;
 BC{1,2} = [ones(size(temp,1)/3,1);2*ones(size(temp,1)/3,1);...
-    3*ones(size(temp,1)/3,1)];% The direction to be constrained (z)
+    3*ones(size(temp,1)/3,1)];
 BC{1,3} = zeros(size(BC{1,1},1),1); % Constraint value (0)
 
 prescribedDOF = getBCmatrix(BC,X);
@@ -103,8 +103,8 @@ L = ones(size(IEN,1),1);
 L_orig = L;
 
 % Elastic constants in N/m^2
-lambda = 4*10^6;
-mu = 4*10^4;
+mu = 4e5;
+lambda = 10*mu;
 
 %****************************** Assembly *****************************%
 
@@ -113,11 +113,13 @@ mu = 4*10^4;
 % reshape()
 xtemp = reshape(X(:,1),sqrt(numNodes),sqrt(numNodes));
 ytemp = reshape(X(:,2),sqrt(numNodes),sqrt(numNodes));
-u_z = 10^(-2)*xlim*(sin(xtemp*pi/xlim)+sin(ytemp*pi/ylim));
+u_z = 0.006*0.5*(sin(xtemp*pi/xlim)+sin(ytemp*pi/ylim));
 u_z = reshape(u_z,numNodes,1);
 
 % Set x and y components of displacement to 0
 u = [zeros(numNodes,2),u_z];
+
+% u = 0.006*rand(size(X));
 
 % Apply boundary condition u_z = 0 on the nodes on sides of the square.
 rowCol = [ceil(prescribedDOF(:,1)/3),mod(prescribedDOF(:,1),3)];
@@ -142,9 +144,9 @@ for i=1:f_steps
     f = repmat([0,0,i*deltaF],size(IEN,1),1);
     
     % Newton Iterations
-    maxIter = 20;
-    while(1)
-        fprintf('Equilibrium iteration: %d\n',21-maxIter);
+    maxIter = 50;
+    while(maxIter > 0)        
+        fprintf('Equilibrium iteration: %d\n',51-maxIter);
         if(useT6QuadEle)
             [W,r,kiakb,L] = assemblyT6Quad(X,x,H,f,quadOrder,lambda,mu,...
                 IEN,ID,L);
@@ -162,11 +164,7 @@ for i=1:f_steps
             %fprintf('Newton update is very small: %17.16f\n',...
             %    norm(u_Newton));
             break;
-        end
-        if(maxIter < 0)
-            %fprintf('Maximum iterations exceeded.\n');
-            break;
-        end
+        end        
         maxIter = maxIter - 1;
         x(unknownDOFs) = x(unknownDOFs) + u_Newton;
     end
@@ -180,6 +178,13 @@ for i=1:f_steps
     u = x - X;
     u_max(i) = max(abs(u)); % Maximum deflection
     f_inc(i) = norm(f(1,:));
+    
+    % Plot the half-load deformation
+    if(i == f_steps/2)
+        fig = figure;
+       plotMesh(fig,IEN(:,1:3),x,'halfDeformedMesh.eps',false,isVisible);
+    end
+    
 end
 toc;
 
@@ -190,7 +195,7 @@ xlabel('Force (N/m^2)');
 ylabel('Maximum deflection (m)');
 title('Force vs. Deflection Curve');
 print(fig,'forceDeflection.eps','-depsc');
-savefig(fig,'forceDeflection.fig');
+% savefig(fig,'forceDeflection.fig');
 
 toSaveData = [f_inc,u_max];
 dlmwrite('forceDeflection.dat',toSaveData,'delimiter','\t',...
@@ -202,4 +207,4 @@ end
 
 fig = figure;
 isVisible = false;
-plotMesh(fig,IEN(:,1:3),x,'deformedMesh.eps',isScatterOn,isVisible);
+plotMesh(fig,IEN(:,1:3),x,'deformedMesh.eps',false,true);

@@ -1,0 +1,404 @@
+\documentclass[../main.tex]{subfiles}
+\begin{document}
+\lstset{language=Matlab}
+\section{Problem 1}
+\subsection{Introduction} Our objective in this problem is to
+calculate the deformation gradient, right Cauchy-Green strain tensor
+and the Green strain tensor from a given deformed configuration map.
+The problem gives position map for a uniaxial deformation of a
+cylinder. Cylindrical coordinates are our natural choice of
+curvilinear coordinates for this problem. The cylindrical basis
+vectors in the lab-frame components are given as
+\begin{align*}
+  \left[\theta_1,\theta_2,\theta_3\right]=\left[\mathbf{e}_R,\mathbf{e}_{\phi},\mathbf{e}_Z\right] =
+  \begin{pmatrix}
+    \cos(\phi) & -\sin(\phi) & 0\\
+    \sin(\phi) & \cos(\phi) & 0\\
+    0 & 0 & 1
+  \end{pmatrix}
+\end{align*}
+The reference configuration and the deformed configuration of this
+problem are independent of $\phi$ due to the axisymmetric nature of
+the problem. The reference configuration is given by
+\begin{align*}
+  \mathbf{X} = R\mathbf{e}_R + Z\mathbf{e}_Z\quad a_0<R<b_0
+\end{align*}
+The deformed configuration is given as
+\begin{align*}
+  \mathbf{x} = \lambda_1R\mathbf{e}_R+\lambda_2Z\mathbf{e}_Z\quad \lambda_1,\lambda_2 > 0
+\end{align*}
+Now, determinant of deformation gradient for the given reference and
+deformed configuration is found to be
+$J = |\mathbf{F}| = \lambda_1^2\lambda_2$. A valid deformation should
+not invert the volume of the body. Hence $\lambda_1^2\lambda_2 > 0$.
+
+The curvilinear tangent basis vectors are defined as follows:
+\begin{align*}
+  \mathbf{G}_i &= \frac{\partial\mathbf{X}}{\partial\theta_i}\\
+  \mathbf{g}_i &=\frac{\partial\mathbf{x}}{\partial\theta_i}
+\end{align*}
+The dual basis vectors can be derived from the tangent basis vectors
+using the following Kronecker-delta properties
+\begin{align*}
+  \mathbf{G}_i\cdot\mathbf{G}^j &= \delta_i^j\\
+  \mathbf{g}_i\cdot\mathbf{g}^j &= \delta_i^j\\
+\end{align*}
+The deformation gradient can be computed as
+\[\mathbf{F} = \mathbf{g}_i\otimes\mathbf{G}^i\]
+Further, the right Cauchy-Green deformation tensor is
+\[\mathbf{C}=\mathbf{F}^T\mathbf{F} \]
+The Green strain is given as
+\[\mathbf{E}= \frac{1}{2}(\mathbf{C}-\mathbf{I})\]
+
+\subsection{Formulation of Numerical Methods}
+We have used Matlab$^\copyright$ for coding this problem. The code for
+solving this problem starts with clearing the workspace, command
+window and closing any open figure windows. Next, we initialize the
+parameters required for numerical calculations --
+$a_0,\lambda_1,\lambda_2,\phi$ and $R$.
+\begin{lstlisting}[style=Matlab-editor]
+  % Clean the set-up
+  clear; close all; clc;
+  
+  % Initialize parameters
+  a0 = 1; lambda1 = 1; lambda2 = 2; R = a0; phi = pi/4;
+\end{lstlisting}
+The next step is to create basis vectors in the lab-frame and
+curvilinear co-ordinates as obtained by hand calculations. Note that
+the curvilinear basis vectors have been stored as a $3\times3$ matrix
+where each column represents a basis vector.
+\begin{lstlisting}[style=Matlab-editor]
+  % The cylindrical basis vectors
+  e_R = [cos(phi), sin(phi), 0]'; e_phi = [-sin(phi), cos(phi), 0]';
+  e_Z = [0,0,1]';
+  
+  % The basis vectors in reference configurations - Gt for tangent
+  % basis vectors and Gd for dual basis vectors
+  Gt =[e_R, R*e_phi, e_Z]; Gd =[e_R, e_phi/R,e_Z];
+  
+  % The basis vectors in reference configurations - gt for tangent
+  % basis vectors and gd for dual basis vectors
+  gt = [lambda1*e_R,lambda1*R*e_phi, lambda2*e_Z]; gd =
+  [(1/lambda1)*e_R,(1/(lambda1*R))*e_phi, (1/lambda2)*e_Z];
+\end{lstlisting}
+
+The deformation gradient and the two strain tensors can be calculated
+using the equations we saw earlier
+\begin{lstlisting}[style=Matlab-editor]
+  % Deformation Gradient, $ F = gt(:,i) \otimes Gd(:,i) $
+  F = gt(:,1)*Gd(:,1)' + gt(:,2)*Gd(:,2)' + gt(:,3)*Gd(:,3)';
+  
+  % The right Cauchy-Green deformation tensor
+  C = F'*F;
+  
+  % The Green strain
+  E = (C - eye(3))/2;
+\end{lstlisting}
+At last, we will display the calculated arrays and matrices on the
+output window
+\begin{lstlisting}[style=Matlab-editor]
+  display(gt); display(gd); display(Gt); display(Gd); display(F);
+  display(C); display(E);
+\end{lstlisting}
+
+\subsection{Calculations and Results}
+
+
+Using $R = a_0 = 1$, $\lambda_1 = 1$, $\lambda_2 = 2$, $\phi = \pi/4$
+
+% first column
+\begin{minipage}[t]{0.5\textwidth}
+  \textbf{Analytical Results:}\\
+	
+  %%%% Tangent basis vectors in reference config %%%%
+  The tangent basis vectors
+  \begin{align*}
+    \left(\mathbf{G}_1,\mathbf{G}_2,\mathbf{G}_3\right) &=
+                                                          \begin{pmatrix}
+                                                            \cos(\phi) & -R\sin(\phi) & 0\\
+                                                            \sin(\phi) &  R\cos(\phi)& 0\\
+                                                            0 & 0 & 1\\
+                                                          \end{pmatrix}\\
+                                                        &\approx
+                                                          \begin{pmatrix}
+                                                            0.7071 & -0.7071 & 0\\
+                                                            0.7071 &  0.7071 & 0\\
+                                                            0& 0 & 1\\
+                                                          \end{pmatrix}
+  \end{align*}
+  %%%% Dual basis vectors in reference config %%%%
+  The dual basis vectors
+  \begin{align*}
+    \left(\mathbf{G}^1,\mathbf{G}^2,\mathbf{G}^3\right) &=
+                                                          \begin{pmatrix}
+                                                            \cos(\phi) & -\sin(\phi)/R & 0\\
+                                                            \sin(\phi) &  \cos(\phi)/R& 0\\
+                                                            0 & 0 & 1\\
+                                                          \end{pmatrix}\\
+                                                        &\approx
+                                                          \begin{pmatrix}
+                                                            0.7071 & -0.7071 & 0\\
+                                                            0.7071 &  0.7071 & 0\\
+                                                            0	& 0 & 1\\
+                                                          \end{pmatrix}
+  \end{align*}
+  %%%% The tangent basis vectors in DEFORMED config %%%%
+  The tangent basis vectors
+  \begin{align*}
+    \left(\mathbf{g}_1,\mathbf{g}_2,\mathbf{g}_3\right) &=
+                                                          \begin{pmatrix}
+                                                            \lambda_1\cos(\phi) & -\lambda_1R\sin(\phi) & 0\\
+                                                            \lambda_1\sin(\phi) &  \lambda_1R\cos(\phi) & 0\\
+                                                            0 & 0 & \lambda_2\\
+                                                          \end{pmatrix}\\
+                                                        &\approx
+                                                          \begin{pmatrix}
+                                                            0.7071 & -0.7071 & 0\\
+                                                            0.7071 &  0.7071 & 0\\
+                                                            0 & 0 & 2\\
+                                                          \end{pmatrix}
+  \end{align*}
+  %%%% Dual basis vectors in DEFORMED config %%%%
+  The dual basis vectors
+  \begin{align*}
+    \left(\mathbf{g}^1,\mathbf{g}^2,\mathbf{g}^3\right) &=
+                                                          \begin{pmatrix}
+                                                            1/\lambda_1 & -\sin(\phi)/\lambda_1R & 0\\
+                                                            0 & \cos(\phi)/\lambda_1R & 0\\
+                                                            0 & 0 & 1/\lambda_2\\
+                                                          \end{pmatrix}\\
+                                                        &\approx
+                                                          \begin{pmatrix}
+                                                            0.7071 & -0.7071 & 0\\
+                                                            0.7071 &  0.7071 & 0\\
+                                                            0 & 0 & 0.5\\
+                                                          \end{pmatrix}
+  \end{align*}
+\end{minipage}
+% second column
+\begin{minipage}[t]{0.5\textwidth}
+  \textbf{Numerical Results:}\\
+		
+  %%%	The tangent basis vectors in reference configuration %%%
+  The tangent basis vectors
+  \[
+  \left(\mathbf{G}_1,\mathbf{G}_2,\mathbf{G}_3\right)=
+  \begin{pmatrix}
+    0.7071 & -0.7071 & 0\\
+    0.7071 &  0.7071 & 0\\
+    0      &  0      & 1\\
+  \end{pmatrix}
+  \]
+  \vspace{13mm}
+	
+  %%%	The dual basis vectors in reference configuration %%%
+  The dual basis vectors
+  \[
+  \left(\mathbf{G}^1,\mathbf{G}^2,\mathbf{G}^3\right)=
+  \begin{pmatrix}
+    0.7071 & -0.7071 & 0\\
+    0.7071 &  0.7071 & 0\\
+    0      &  0      & 1\\
+  \end{pmatrix}
+  \]
+  \vspace{13mm}
+	
+  %%%	The tangent basis vectors in DEFORMED configuration %%%
+  The tangent basis vectors
+  \[
+  \left(\mathbf{g}_1,\mathbf{g}_2,\mathbf{g}_3\right)=
+  \begin{pmatrix}
+    0.7071 & -0.7071 & 0\\
+    0.7071 &  0.7071 & 0\\
+    0      &  0      & 2.0\\
+  \end{pmatrix}
+  \]
+  \vspace{13mm}
+	
+  %%%	The dual basis vectors in DEFORMED configuration %%%
+  The dual basis vectors
+  \[
+  \left(\mathbf{g}^1,\mathbf{g}^2,\mathbf{g}^3\right)=
+  \begin{pmatrix}
+    0.7071 & -0.7071 & 0\\
+    0.7071 &  0.7071 & 0\\
+    0      &  0      & 0.5\\
+  \end{pmatrix}
+  \]
+  \vspace{13mm}
+\end{minipage}
+	
+	\begin{minipage}[t]{0.5\textwidth}
+          \textbf{Analytical Results:}\\
+	
+          %%%% Deformation Gradient %%%%
+          The deformation gradient
+          \begin{align*}
+            \mathbf{F} &=
+                         \begin{pmatrix}
+                           \lambda_1 & 0  & 0\\
+                           0 & \lambda_1 & 0\\
+                           0  &  0  & \lambda_2\\
+                         \end{pmatrix}\\ &\approx
+                                           \begin{pmatrix}
+                                             1 & 0 & 0\\
+                                             0 & 1 & 0\\
+                                             0 & 0 & 2\\
+                                           \end{pmatrix}
+          \end{align*}
+          %%%% Right Cauchy-Green Strain %%%%
+          The right Cauchy-Green Strain tensor
+          \begin{align*}
+            \mathbf{C} &=
+                         \begin{pmatrix}
+                           \lambda_1 & 0 & 0\\
+                           0 & \lambda_1^2 & 0\\
+                           0 & 0 & \lambda_2^2\\
+                         \end{pmatrix}\\ &\approx
+                                           \begin{pmatrix}
+                                             1 & 0 & 0\\
+                                             0 & 1 & 0\\
+                                             0 & 0 & 4\\
+                                           \end{pmatrix}
+          \end{align*}
+          %%%% Green Strain %%%%
+          The Green Strain tensor
+          \begin{align*}
+            \mathbf{E} &=
+                         \begin{pmatrix}
+                           (\lambda_1-1)/2 & 0 & 0\\
+                           0 & (\lambda_1^2-1)/2 & 0\\
+                           0 & 0 & (\lambda_2^2-1)/2\\
+                         \end{pmatrix}\\ &\approx
+                                           \begin{pmatrix}
+                                             0 & 0 & 0\\
+                                             0 & 0 & 0\\
+                                             0 & 0 & 1.5\\
+                                           \end{pmatrix}
+          \end{align*}
+	\end{minipage}
+	% second column
+	\begin{minipage}[t]{0.5\textwidth}
+          \textbf{Numerical Results:}\\
+	
+          %%%	The Deformation Gradient %%%
+          The deformation gradient
+          \[
+          \mathbf{F}=
+          \begin{pmatrix}
+            1 & 0 & 0\\
+            0 & 1 & 0\\
+            0 & 0 & 2\\
+          \end{pmatrix}
+          \]
+          \vspace{13mm}
+	
+          %%%	The right Cauchy-Green Strain %%%
+          The right Cauchy-Green Strain
+          \[
+          \mathbf{C}=
+          \begin{pmatrix}
+            1 & 0 & 0\\
+            0 & 1 & 0\\
+            0 & 0 & 4\\
+          \end{pmatrix}
+          \]\vspace{13mm}
+	
+          %%%	The Green Strain %%%
+          The Green Strain Tensor
+          \[
+          \mathbf{E}=
+          \begin{pmatrix}
+            0 & 0 & 0\\
+            0 & 0 & 0\\
+            0 & 0 & 1.5\\
+          \end{pmatrix}
+          \]
+	\end{minipage}
+
+        \subsection{Discussion and Conclusions}
+        Looking at the equations for reference configuration and
+        deformed configurations
+        \begin{align*}
+          \mathbf{X} &= R\mathbf{e}_R + Z\mathbf{e}_Z\quad a_0<R<b_0\\
+          \mathbf{x} &= \lambda_1R\mathbf{e}_R+\lambda_2Z\mathbf{e}_Z\quad \lambda_1,\lambda_2 > 0
+        \end{align*}
+        we can see that the deformed configuration is simply an
+        axisymmetric radial scaling of reference configuration along
+        with a scaling in the $\mathbf{e}_Z$ direction. Due to
+        axisymmetry we expect
+        \[\mathbf{F}_{11} = \mathbf{F}_{22}\]
+        Also, because $\lambda_1$ is the stretching ratio we expect
+        \[\mathbf{F}_{11}=\mathbf{F}_{22}=\lambda_1\]
+        The stretching ratio along $\mathbf{e}_Z$ is clearly
+        $\lambda_2$ therefore we expect
+        \[\mathbf{F}_{33}=\lambda_2\]
+        Our expectation is confirmed by both the hand calculations and
+        numerical results because we obtain
+        \begin{align*}
+          \mathbf{F} &=
+                       \begin{pmatrix}
+                         \lambda_1 & 0  & 0\\
+                         0 & \lambda_1 & 0\\
+                         0  &  0  & \lambda_2\\
+                       \end{pmatrix}\\ &\approx
+                                         \begin{pmatrix}
+                                           1 & 0 & 0\\
+                                           0 & 1 & 0\\
+                                           0 & 0 & 2\\
+                                         \end{pmatrix}
+        \end{align*}
+        for the chosen values $\lambda_1 = 1$, $\lambda_2 = 2$.
+        Physically, the right-Cauchy strain tensor gives the square of
+        local change in distances on deformation
+        \[d\mathbf{x} = \mathbf{X}\cdot\mathbf{C}\mathbf{X}\]
+        This is consistent with our results
+        \begin{align*}
+          \mathbf{C} &=
+                       \begin{pmatrix}
+                         \lambda_1 & 0 & 0\\
+                         0 & \lambda_1^2 & 0\\
+                         0 & 0 & \lambda_2^2\\
+                       \end{pmatrix}\\ &\approx
+                                         \begin{pmatrix}
+                                           1 & 0 & 0\\
+                                           0 & 1 & 0\\
+                                           0 & 0 & 4\\
+                                         \end{pmatrix}
+        \end{align*}
+        
+        The Green-strain indicates how much $\mathbf{C}$ differs from
+        $\mathbf{I}$ where strain $\mathbf{I}$ means that reference
+        and deformed configurations are the same. Once again, this is
+        seen in our results.
+        \begin{align*}
+          \mathbf{E} &=
+                       \begin{pmatrix}
+                         (\lambda_1-1)/2 & 0 & 0\\
+                         0 & (\lambda_1^2-1)/2 & 0\\
+                         0 & 0 & (\lambda_2^2-1)/2\\
+                       \end{pmatrix}\\ &\approx
+                                         \begin{pmatrix}
+                                           0 & 0 & 0\\
+                                           0 & 0 & 0\\
+                                           0 & 0 & 1.5\\
+                                         \end{pmatrix}
+        \end{align*}
+        As we see, because the radial stretch has been chosen to be
+        $\lambda_1=1$, which means no change in the radial direction,
+        in the Green-strain tensor, the $(1,1)$ and $(2,2)$ components
+        are $0$.
+        
+        Thus, we find that our calculations and results are consistent
+        with physical expectations.
+        \subsection{Source Code Listing}
+        The files related to Problem 1 are
+        \begin{enumerate}
+        \item HW1\_1.m
+        \end{enumerate}
+      \end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "../main"
+%%% End:

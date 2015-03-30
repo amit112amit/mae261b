@@ -16,6 +16,7 @@ end
 figure(fig);
 hold on;
 trisurf(IEN(:,1:3),x(1,:),x(2,:),x(3,:));
+view(3);
 
 if(isScatterOn)    
     scatter3(x(1,:),x(2,:),x(3,:));   
@@ -27,14 +28,14 @@ if(~isempty(fileName))
     % Save the color eps file
     print(fig,fileName,'-depsc');
     
-    % Save the figure file
-    idx = strfind(fileName,'.');
-    if(isempty(idx))
-        figFileName = strcat(fileName,'.fig');
-    else
-        figFileName = strcat(fileName(1:idx-1),'.fig');
-    end
-    savefig(fig,figFileName);
+%     % Save the figure file
+%     idx = strfind(fileName,'.');
+%     if(isempty(idx))
+%         figFileName = strcat(fileName,'.fig');
+%     else
+%         figFileName = strcat(fileName(1:idx-1),'.fig');
+%     end
+%     savefig(gcf,figFileName);
 end
 
 end

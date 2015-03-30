@@ -192,9 +192,9 @@ title('Stress-strain behaviour for Equi-biaxial strain');
 legend('P11','P22','Location','southeast');
 %***************** Plot the reference and final shapes *******************%
 
-% x = reshape(x,3,[]);
-% trisurf(IEN,x(1,:),x(2,:),x(3,:));
-% hold on;
-% X = reshape(X_orig,3,[]);
-% trisurf(IEN,X(1,:),X(2,:),X(3,:)+0.5*ones(1,size(X,2)));
-% hold off;
+x = reshape(x,3,[]);
+trisurf(IEN,x(1,:),x(2,:),x(3,:));
+hold on;
+trisurf(IEN,X(:,1),X(:,2),X(:,3)+0.5*ones(size(X,1),1));
+hold off;
+title('Equibiaxial Strain Problem: Initial and Intermediate Mesh');

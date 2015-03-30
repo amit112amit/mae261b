@@ -27,7 +27,9 @@ X = [reshape(mesh_x,numNodes,1), reshape(mesh_y,numNodes,1),...
     reshape(mesh_z,numNodes,1)];
 
 trisurf(IEN,X(:,1),X(:,2),X(:,3));
-
+hold on;
+scatter3(X(:,1),X(:,2),X(:,3));
+hold off;
 
 %****************** Boundary Condition and Meta Arrays *******************%
 

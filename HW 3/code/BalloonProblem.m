@@ -26,7 +26,7 @@ end
 
 %Plot mesh but fileName = empty string, isScatterOn = true, isVisible=true
 fig = figure;
-% fig = plotMesh(fig,IEN,reshape(X.',[],1),'',false,true);
+fig = plotMesh(fig,IEN,reshape(X.',[],1),'',false,true);
 
 numNodes = size(X,1);
 numEle = size(IEN,1);
